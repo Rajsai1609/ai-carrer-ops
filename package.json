@@ -1,0 +1,14 @@
+{
+  "name": "career-ops",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "pdf": "node generate-pdf.mjs",
+    "doctor": "node doctor.mjs",
+    "merge": "node merge-tracker.mjs",
+    "verify": "node verify-pipeline.mjs"
+  },
+  "dependencies": {
+    "playwright": "1.58.1"
+  }
+}

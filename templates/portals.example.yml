@@ -1,0 +1,312 @@
+# Career-Ops Careers Portal Registry
+# Used by modes/scan.md for automated job board scraping.
+# Add your own company entries below.
+
+portals:
+  # ─── FAANG / Big Tech ───────────────────────────────────────────────────────
+  - company: Google
+    url: "https://careers.google.com/jobs/results/"
+    search_params: "?q=software+engineer&location=United+States&employment_type=FULL_TIME"
+    selector: ".gc-card"
+    title_selector: ".gc-card__title"
+    pagination: next_button
+    notes: "Filter by 'Software Engineering' family"
+
+  - company: Microsoft
+    url: "https://jobs.microsoft.com/us/en/search"
+    search_params: "?q=software+engineer&lc=United+States"
+    selector: "[data-automation-id='jobResult']"
+    title_selector: ".ms-Link"
+    pagination: infinite_scroll
+    notes: "Filter via category=Engineering"
+
+  - company: Amazon
+    url: "https://www.amazon.jobs/en/search"
+    search_params: "?base_query=software+engineer&loc_query=United+States"
+    selector: ".job-tile"
+    title_selector: ".job-title"
+    pagination: next_button
+    notes: "Amazon and AWS roles combined"
+
+  - company: Meta
+    url: "https://www.metacareers.com/jobs"
+    search_params: "/?q=software+engineer&divisions[0]=Engineering"
+    selector: "[data-testid='job-listing']"
+    title_selector: "a[data-testid='job-title']"
+    pagination: load_more
+    notes: "Covers Facebook, Instagram, WhatsApp, Reality Labs"
+
+  - company: Apple
+    url: "https://jobs.apple.com/en-us/search"
+    search_params: "?search=software+engineer&sort=newest"
+    selector: ".table--advanced-search__title"
+    title_selector: "a"
+    pagination: next_button
+    notes: "Filter by 'Software and Services' team"
+
+  # ─── AI / ML Companies ──────────────────────────────────────────────────────
+  - company: Anthropic
+    url: "https://www.anthropic.com/careers"
+    selector: ".career-listing"
+    title_selector: "h3"
+    pagination: none
+    notes: "Check Engineering section"
+
+  - company: OpenAI
+    url: "https://openai.com/careers"
+    selector: "[data-testid='careers-job']"
+    title_selector: "h3"
+    pagination: none
+    notes: "Filter by Engineering department"
+
+  - company: Cohere
+    url: "https://cohere.com/careers"
+    selector: ".job-item"
+    title_selector: "h4"
+    pagination: none
+
+  - company: Mistral AI
+    url: "https://mistral.ai/careers/"
+    selector: ".lever-job-posting"
+    title_selector: "h5"
+    pagination: none
+
+  - company: Perplexity AI
+    url: "https://www.perplexity.ai/hub/careers"
+    selector: ".jobs-listing__item"
+    title_selector: "h3"
+    pagination: none
+
+  # ─── Infrastructure / Cloud ─────────────────────────────────────────────────
+  - company: Stripe
+    url: "https://stripe.com/jobs/search"
+    search_params: "?q=engineer"
+    selector: "[data-job-listing]"
+    title_selector: "h3"
+    pagination: load_more
+    notes: "Filter by Engineering"
+
+  - company: HashiCorp
+    url: "https://www.hashicorp.com/careers"
+    selector: ".career-item"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Datadog
+    url: "https://careers.datadoghq.com/all-jobs/"
+    search_params: "?department=Engineering"
+    selector: ".jobs-list-item"
+    title_selector: "h3"
+    pagination: next_button
+
+  - company: Cloudflare
+    url: "https://www.cloudflare.com/careers/jobs/"
+    search_params: "?department=Engineering"
+    selector: "[data-testid='job-listing']"
+    title_selector: "h3"
+    pagination: load_more
+
+  - company: Fastly
+    url: "https://www.fastly.com/about/jobs/"
+    selector: ".job-listing"
+    title_selector: "h4"
+    pagination: none
+
+  # ─── Data / Analytics ───────────────────────────────────────────────────────
+  - company: Databricks
+    url: "https://www.databricks.com/company/careers/open-positions"
+    search_params: "?department=Engineering"
+    selector: ".careers-list-item"
+    title_selector: "h4"
+    pagination: load_more
+
+  - company: Snowflake
+    url: "https://careers.snowflake.com/us/en/search-results"
+    search_params: "?qkeyword=software+engineer"
+    selector: ".jobs-list-item"
+    title_selector: "h3"
+    pagination: next_button
+
+  - company: dbt Labs
+    url: "https://www.getdbt.com/dbt-labs/open-roles"
+    selector: ".open-role"
+    title_selector: "h4"
+    pagination: none
+
+  - company: Fivetran
+    url: "https://www.fivetran.com/careers"
+    selector: ".career-listing"
+    title_selector: "h3"
+    pagination: none
+
+  # ─── Developer Tools ────────────────────────────────────────────────────────
+  - company: GitHub
+    url: "https://www.github.careers/careers-home/jobs"
+    search_params: "?keyword=software+engineer"
+    selector: ".job-item"
+    title_selector: "h3"
+    pagination: next_button
+
+  - company: GitLab
+    url: "https://about.gitlab.com/jobs/all-jobs/"
+    search_params: "?department=Engineering"
+    selector: ".job-list-item"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Vercel
+    url: "https://vercel.com/careers"
+    selector: ".role-item"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Linear
+    url: "https://linear.app/careers"
+    selector: ".job-listing"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Figma
+    url: "https://www.figma.com/careers/"
+    search_params: "?team=Engineering"
+    selector: ".open-job-item"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Notion
+    url: "https://www.notion.so/careers"
+    selector: ".career-item"
+    title_selector: "h4"
+    pagination: none
+
+  - company: PlanetScale
+    url: "https://planetscale.com/careers"
+    selector: ".job-listing"
+    title_selector: "h3"
+    pagination: none
+
+  # ─── FinTech ────────────────────────────────────────────────────────────────
+  - company: Plaid
+    url: "https://plaid.com/careers/openings/"
+    search_params: "/?department=Engineering"
+    selector: ".open-positions__role"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Brex
+    url: "https://www.brex.com/careers"
+    selector: ".career-item"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Robinhood
+    url: "https://careers.robinhood.com/"
+    search_params: "?team=engineering"
+    selector: ".opening"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Affirm
+    url: "https://www.affirm.com/careers"
+    search_params: "?department=Engineering"
+    selector: ".job-listing"
+    title_selector: "h4"
+    pagination: load_more
+
+  - company: Carta
+    url: "https://carta.com/careers/"
+    selector: ".job-item"
+    title_selector: "h3"
+    pagination: none
+
+  # ─── Healthcare Tech ────────────────────────────────────────────────────────
+  - company: Tempus
+    url: "https://www.tempus.com/careers/"
+    selector: ".job-listing"
+    title_selector: "h4"
+    pagination: none
+
+  - company: Oscar Health
+    url: "https://www.hioscar.com/about/jobs"
+    selector: ".job-listing"
+    title_selector: "h3"
+    pagination: none
+
+  # ─── Enterprise SaaS ────────────────────────────────────────────────────────
+  - company: Salesforce
+    url: "https://careers.salesforce.com/en/jobs/"
+    search_params: "?keywords=software+engineer"
+    selector: ".slds-col"
+    title_selector: "h3"
+    pagination: next_button
+
+  - company: ServiceNow
+    url: "https://careers.servicenow.com/careers/jobs"
+    search_params: "?keyword=software+engineer"
+    selector: ".job-tile"
+    title_selector: "h3"
+    pagination: next_button
+
+  - company: Twilio
+    url: "https://www.twilio.com/en-us/company/jobs"
+    search_params: "?q=engineer"
+    selector: ".opening"
+    title_selector: "h4"
+    pagination: none
+
+  - company: Okta
+    url: "https://www.okta.com/company/careers/"
+    search_params: "?department=Engineering"
+    selector: ".career-listing"
+    title_selector: "h3"
+    pagination: load_more
+
+  - company: Zendesk
+    url: "https://jobs.zendesk.com/us/en/search-results"
+    search_params: "?qkeyword=software+engineer"
+    selector: ".jobs-list-item"
+    title_selector: "h3"
+    pagination: next_button
+
+  # ─── Seed/Series A─C Startups (check frequently) ───────────────────────────
+  - company: Rippling
+    url: "https://www.rippling.com/careers"
+    selector: ".job-listing"
+    title_selector: "h4"
+    pagination: none
+
+  - company: Retool
+    url: "https://retool.com/careers"
+    selector: ".open-role"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Cal.com
+    url: "https://cal.com/careers"
+    selector: ".job-listing"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Loom
+    url: "https://www.loom.com/careers"
+    selector: ".job-listing"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Temporal
+    url: "https://temporal.io/careers"
+    selector: ".career-item"
+    title_selector: "h4"
+    pagination: none
+
+  - company: Turso
+    url: "https://turso.tech/careers"
+    selector: ".job-listing"
+    title_selector: "h3"
+    pagination: none
+
+  - company: Neon
+    url: "https://neon.tech/careers"
+    selector: ".job-listing"
+    title_selector: "h3"
+    pagination: none

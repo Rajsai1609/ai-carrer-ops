@@ -1,0 +1,11 @@
+data/
+reports/
+output/
+jds/
+batch/logs/
+batch/tracker-additions/
+node_modules/
+dashboard/dashboard
+dashboard/*.exe
+.env
+config/profile.yml

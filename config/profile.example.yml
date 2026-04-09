@@ -1,0 +1,111 @@
+# Career-Ops Profile Configuration
+# Copy this file to config/profile.yml and fill in your details.
+# This file is in .gitignore — it will NOT be committed.
+
+# ─── Identity ────────────────────────────────────────────────────────────────
+name: "Jane Doe"
+email: "jane.doe@email.com"
+phone: "+1 (555) 000-0000"
+location: "San Francisco, CA"
+timezone: "America/Los_Angeles"
+linkedin: "https://linkedin.com/in/janedoe"
+github: "https://github.com/janedoe"
+portfolio: "https://janedoe.dev"
+
+# ─── Target Roles ────────────────────────────────────────────────────────────
+target_roles:
+  - "Senior Software Engineer"
+  - "Staff Engineer"
+  - "Principal Engineer"
+  - "Engineering Lead"
+
+# ─── Compensation ────────────────────────────────────────────────────────────
+salary_range:
+  min: 180000
+  max: 280000
+  currency: "USD"
+  preferred_equity: true
+  note: "Total comp inclusive of base + equity"
+
+# ─── Role Archetypes ─────────────────────────────────────────────────────────
+# Define the types of roles you are suited for and your strength in each.
+# Values: primary | strong | moderate | stretch
+archetypes:
+  backend_systems: "primary"
+  distributed_systems: "primary"
+  platform_infrastructure: "strong"
+  ml_platform: "moderate"
+  full_stack: "strong"
+  frontend: "moderate"
+  data_engineering: "moderate"
+  devops_sre: "stretch"
+  engineering_management: "stretch"
+
+# ─── Preferences ─────────────────────────────────────────────────────────────
+preferences:
+  remote: "preferred"          # preferred | open | no
+  company_size:
+    - "Series B-D startup"
+    - "Mid-size (500-5000)"
+    - "Large enterprise"
+  industries:
+    - "Developer Tools"
+    - "Infrastructure / Cloud"
+    - "AI / ML"
+    - "FinTech"
+    - "Healthcare Tech"
+  avoid_industries:
+    - "Gambling"
+    - "Defense"
+    - "Crypto (speculative)"
+  team_size_preference: "5-20 engineers"
+  management_preference: "IC Track"
+
+# ─── Visa / Work Authorization ───────────────────────────────────────────────
+work_authorization:
+  status: "OPT/STEM OPT"      # citizen | greencard | H1B | OPT | etc.
+  needs_sponsorship: true
+  current_expiry: "2026-09-01"
+
+# ─── Core Narrative ──────────────────────────────────────────────────────────
+# 2-3 sentence career narrative used to personalize applications.
+narrative: >
+  Senior backend engineer with 6 years building high-throughput distributed
+  systems at scale. I specialize in API platform design, data pipeline
+  architecture, and developer experience tooling. I'm seeking a senior IC
+  role where I can own complex systems end-to-end and mentor junior engineers.
+
+# ─── Technical Skills ────────────────────────────────────────────────────────
+skills:
+  languages:
+    - Python
+    - Go
+    - TypeScript
+    - Java
+    - SQL
+  frameworks:
+    - FastAPI
+    - gRPC
+    - React
+    - Spring Boot
+  infrastructure:
+    - AWS (EC2, S3, Lambda, EKS)
+    - GCP (GKE, BigQuery)
+    - Kubernetes
+    - Terraform
+    - Docker
+  databases:
+    - PostgreSQL
+    - Redis
+    - Cassandra
+    - Elasticsearch
+
+# ─── Interview Preferences ───────────────────────────────────────────────────
+interview_prep:
+  preferred_languages: ["Python", "Go"]
+  weak_areas: ["System Design — low-latency trading", "Dynamic programming (hard)"]
+  strong_areas: ["API Design", "Distributed Systems Design", "Behavioral"]
+  target_companies_tier:
+    tier1: ["Google", "Meta", "Apple", "Amazon", "Microsoft"]
+    tier2: ["Stripe", "Anthropic", "OpenAI", "Databricks", "Snowflake"]
+    tier3: ["Figma", "Notion", "Linear", "Vercel", "PlanetScale"]

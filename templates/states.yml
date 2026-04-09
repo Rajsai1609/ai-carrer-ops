@@ -1,0 +1,92 @@
+# Career-Ops Canonical Pipeline Statuses
+# These are the only valid statuses in data/applications.md.
+# The normalize-statuses.mjs script maps variants to these.
+
+statuses:
+  - name: Applied
+    description: Application submitted, awaiting response
+    color: blue
+    emoji: "📤"
+    aliases:
+      - apply
+      - sent
+      - submitted
+      - pending
+
+  - name: Screening
+    description: HR/recruiter screen scheduled or completed
+    color: sky
+    emoji: "📞"
+    aliases:
+      - screen
+      - phone screen
+      - hr screen
+      - recruiter call
+      - phone call
+
+  - name: Interview
+    description: Technical or panel interview in progress
+    color: yellow
+    emoji: "🎯"
+    aliases:
+      - interviewing
+      - onsite
+      - technical
+      - technical screen
+      - panel
+      - loop
+      - virtual onsite
+
+  - name: Offer
+    description: Offer received, under consideration
+    color: green
+    emoji: "🎉"
+    aliases:
+      - offered
+      - verbal offer
+      - written offer
+      - negotiating
+
+  - name: Rejected
+    description: Application declined by company
+    color: red
+    emoji: "❌"
+    aliases:
+      - reject
+      - declined
+      - not moving forward
+      - no
+      - pass
+
+  - name: Withdrawn
+    description: Candidate withdrew from process
+    color: gray
+    emoji: "🚫"
+    aliases:
+      - withdraw
+      - withdrew
+      - cancelled
+      - self-rejected
+      - not interested
+
+  - name: Ghosted
+    description: No response after reasonable time
+    color: maroon
+    emoji: "👻"
+    aliases:
+      - no response
+      - unresponsive
+      - silence
+      - no reply
+
+  - name: Pipeline
+    description: Identified as target — not yet applied
+    color: mauve
+    emoji: "🔭"
+    aliases:
+      - prospect
+      - target
+      - considering
+      - shortlisted
+      - researching
+      - queued
