@@ -1,67 +1,29 @@
-# Jane Doe
-
-**Email:** jane.doe@email.com · **Phone:** +1 (555) 000-0000  
-**Location:** San Francisco, CA · **LinkedIn:** linkedin.com/in/janedoe · **GitHub:** github.com/janedoe
-
----
+# Rajsai Naredla
+rajsainaredla114@gmail.com | Bothell, WA | linkedin.com/in/rajsainaredla09
 
 ## Summary
-
-Senior backend engineer with 6 years building high-throughput distributed systems at scale. Specialized in API platform design, data pipeline architecture, and developer experience tooling. Proven track record delivering systems processing 500K+ req/s across 3 production environments. Seeking a senior IC role with ownership of complex systems.
-
----
+AI Architect and Founder of MCTechnology LLC. 5+ years in data engineering and AI/ML.
+Expert in Python, Claude API, multi-agent orchestration, cloud deployment, and full-stack AI products.
 
 ## Experience
 
-### Acme Corp — Senior Software Engineer
-*Jan 2022 – Present · San Francisco, CA (Hybrid)*
+**Founder & AI Architect — MCTechnology LLC** (Sept 2025 – Present)
+- Built production multi-agent AI systems for restaurants, real estate, and career intelligence
+- Deployed MCT PathAI job intelligence platform with automated scraping, scoring, resume tailoring
+- Built AVM real estate valuation tool (XGBoost, R²=0.9523) on Redfin Seattle data
+- Stack: Python, Node.js, TypeScript, Claude API, OpenAI, Supabase, Railway, GitHub Actions
 
-- Architected gRPC-based internal API gateway handling 500K req/s with p99 latency < 8ms, replacing legacy REST monolith
-- Led migration of 14 microservices from AWS ECS to EKS, reducing deployment time by 65% and infra cost by $180K/yr
-- Built real-time event streaming pipeline using Kafka + Python (Faust) processing 2M events/day for fraud detection
-- Mentored 4 junior engineers; established team coding standards and review process reducing critical bugs by 40%
+**Data Analyst — Metro One Loss Prevention** (Sept 2024 – Sept 2025)
+- GCP cloud data pipeline development, BigQuery, Looker Studio, Python analytics
 
-### Buildware Inc — Software Engineer
-*Mar 2020 – Dec 2021 · New York, NY (Remote)*
-
-- Designed and implemented multi-tenant PostgreSQL sharding strategy supporting 10x customer growth (50 → 500 tenants)
-- Built developer-facing REST API (FastAPI + OpenAPI) consumed by 200+ enterprise customers; maintained 99.99% uptime
-- Reduced p95 API latency by 55% through query optimization, Redis caching layer, and connection pool tuning
-
-### DataStream Co — Software Engineer
-*Jun 2018 – Feb 2020 · Austin, TX*
-
-- Built ETL pipelines ingesting 50GB/day from 20 third-party sources using Apache Spark and Airflow
-- Implemented RBAC authorization system across 6 microservices using JWT + OAuth2
-- Developed internal CLI tooling (Go) adopted by 12-person engineering team for deployment automation
-
----
-
-## Projects
-
-### career-ops
-*Node.js, Go, Playwright, Bash*  
-Job search operating system: automated JD evaluation, ATS PDF generation, pipeline tracking TUI dashboard.
-
-### pg-migrator
-*Go, PostgreSQL*  
-Zero-downtime PostgreSQL migration tool supporting parallel migrations with rollback. 450 GitHub stars.
-
----
+**Data Analyst — TCS** (2022–2024)
+- AI/ML focused data analysis, Python, SQL, machine learning model deployment
 
 ## Education
-
-**B.S. Computer Science** — University of Texas at Austin  
-*May 2018 · GPA: 3.7/4.0*
-
----
+- Master's in Cloud Computing — Campbellsville University
+- Bachelor's in Electrical & Electronics Engineering
 
 ## Skills
-
-| | |
-|---|---|
-| **Languages** | Python, Go, TypeScript, Java, SQL, Bash |
-| **Frameworks** | FastAPI, gRPC, React, Spring Boot, Faust |
-| **Infrastructure** | AWS (EC2, EKS, Lambda, S3), GCP (GKE, BigQuery), Kubernetes, Terraform, Docker |
-| **Databases** | PostgreSQL, Redis, Cassandra, Elasticsearch, Kafka |
-| **Observability** | Datadog, Prometheus, Grafana, OpenTelemetry |
+Python, Node.js, TypeScript, JavaScript, SQL, Claude API, OpenAI API, multi-agent systems,
+Supabase, PostgreSQL, SQLite, BigQuery, GCP, Railway, GitHub Actions, Docker,
+FastAPI, XGBoost, scikit-learn, sentence-transformers, Playwright, REST APIs
