@@ -1,0 +1,66 @@
+name: Evaluate Pipeline
+
+on:
+  repository_dispatch:
+    types: [run-pipeline]
+  workflow_dispatch:
+
+jobs:
+  evaluate-and-sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright
+        run: npx playwright install chromium --with-deps
+
+      - name: Copy pipeline.md from scraper repo
+        run: |
+          git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/Rajsai1609/scraper-2.0-agent.git /tmp/scraper
+          cp /tmp/scraper/data/pipeline.md data/pipeline.md || echo "No pipeline.md found"
+
+      - name: Run pipeline evaluation
+        run: node run-pipeline-auto.mjs
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Set up Python for sync
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python deps
+        run: pip install supabase python-dotenv
+
+      - name: Sync to Supabase
+        run: python sync/supabase_sync.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+
+      - name: Trigger ResumeAI batch
+        run: |
+          curl -X POST \
+            https://resume-agent-production-ea2e.up.railway.app/batch-tailor \
+            -H "Content-Type: application/json" \
+            -d '{"jobs": []}'
+        continue-on-error: true
+
+      - name: Commit results
+        run: |
+          git config user.email "github-actions@github.com"
+          git config user.name "GitHub Actions"
+          git add data/grades.tsv reports/
+          git diff --staged --quiet || git commit -m "chore: daily evaluation $(date -u +%Y-%m-%d)"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
