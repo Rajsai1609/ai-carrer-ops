@@ -73,7 +73,7 @@ def fetch_jobs_with_evals() -> pd.DataFrame:
             client.table("jobs")
             .select(
                 "id, url, company, title, career_ops_grade, career_ops_score, "
-                "scraper_score, evaluated_at, visa_flagged, "
+                "scraper_score, evaluated_at, visa_flag, "
                 "evaluations(final_score, report_markdown)"
             )
             .execute()
@@ -246,8 +246,8 @@ if company_search:
     df = df[mask]
 
 # Hide visa-flagged
-if hide_visa_flagged and "visa_flagged" in df.columns:
-    df = df[df["visa_flagged"].ne(True)]
+if hide_visa_flagged and "visa_flag" in df.columns:
+    df = df[df["visa_flag"].ne(True)]
 
 
 # ── Main jobs table ──────────────────────────────────────────────────────────
