@@ -11,7 +11,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
 from supabase import create_client, Client
 
 # ── Paths ───────────────────────────────────────────────────────────────────
@@ -23,7 +26,8 @@ SCRAPER_DB = SCRAPER_ROOT / "data" / "jobs.db"
 LAST_RUN_JSON = SCRAPER_ROOT / "bridge" / "last_run.json"
 
 # ── Env ─────────────────────────────────────────────────────────────────────
-load_dotenv(ROOT / ".env")
+if load_dotenv is not None:
+    load_dotenv(ROOT / ".env")
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
 
