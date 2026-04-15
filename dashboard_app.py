@@ -343,8 +343,16 @@ st.subheader("Generate Tailored Resume")
 @st.cache_data(ttl=3600)
 def fetch_base_resume() -> str:
     """Fetch base resume from scraper-2.0-agent repo."""
-    gh_pat = os.environ.get("GH_PAT", "")
+    gh_pat = ""
+    # Try Streamlit secrets first, then environment
+    try:
+        gh_pat = st.secrets.get("GH_PAT", "")
+    except Exception:
+        pass
     if not gh_pat:
+        gh_pat = os.environ.get("GH_PAT", "")
+    if not gh_pat:
+        st.warning("GH_PAT not configured in Streamlit secrets or environment")
         return ""
     try:
         url = "https://raw.githubusercontent.com/Rajsai1609/scraper-2.0-agent/main/data/resume.txt"
@@ -352,8 +360,12 @@ def fetch_base_resume() -> str:
         r = requests.get(url, headers=headers, timeout=10)
         if r.status_code == 200:
             return r.text
-    except Exception:
-        pass
+        elif r.status_code == 401:
+            st.error("GH_PAT authentication failed. Check your token.")
+        else:
+            st.warning(f"Failed to fetch resume: {r.status_code}")
+    except Exception as exc:
+        st.warning(f"Error fetching resume: {exc}")
     return ""
 
 base_resume = fetch_base_resume()
