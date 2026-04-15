@@ -22,10 +22,10 @@ import pandas as pd
 import streamlit as st
 from dotenv import load_dotenv
 
-from components.job_card import render_all_cards
-from components.sidebar import render_sidebar
-from components.stats_bar import render_stats
-from sheets_reader import load_jobs
+from dashboard.components.job_card import render_all_cards
+from dashboard.components.sidebar import render_sidebar
+from dashboard.components.stats_bar import render_stats
+from dashboard.sheets_reader import load_jobs
 
 load_dotenv()
 
