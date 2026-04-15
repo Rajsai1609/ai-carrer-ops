@@ -253,6 +253,50 @@ def fetch_jobs_with_evals() -> pd.DataFrame:
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=300)
+def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50) -> pd.DataFrame:
+    """Fetch personalized jobs for a student from student_job_scores table."""
+    client = get_client()
+    if client is None:
+        return pd.DataFrame()
+    try:
+        # Fetch scores with job details
+        result = (
+            client.table("student_job_scores")
+            .select("job_id, fit_score")
+            .eq("student_id", student_id)
+            .gte("fit_score", min_score)
+            .order("fit_score", ascending=False)
+            .limit(limit)
+            .execute()
+        )
+        scores = result.data or []
+        if not scores:
+            return pd.DataFrame()
+        
+        # Get job IDs
+        job_ids = [s["job_id"] for s in scores]
+        score_map = {s["job_id"]: s["fit_score"] for s in scores}
+        
+        # Fetch job details
+        jobs_result = (
+            client.table("jobs")
+            .select("id, url, company, title, career_ops_grade, career_ops_score")
+            .in_("id", job_ids)
+            .execute()
+        )
+        jobs = jobs_result.data or []
+        
+        # Add fit_score to each job
+        for job in jobs:
+            job["fit_score"] = score_map.get(job["id"], 0) * 100  # Scale to 0-100
+        
+        return pd.DataFrame(jobs)
+    except Exception as exc:
+        st.warning(f"Could not load student jobs: {exc}")
+        return pd.DataFrame()
+
+
 @st.cache_data(ttl=1800)
 def fetch_metrics() -> dict[str, int]:
     client = get_client()
@@ -385,7 +429,13 @@ st.markdown("<br>", unsafe_allow_html=True)
 
 
 # ── Load full data ────────────────────────────────────────────────────────────
-df_all = fetch_jobs_with_evals()
+# Use personalized student jobs if a student is selected
+if selected_student_id:
+    df_all = fetch_student_jobs(selected_student_id, min_score=0.4, limit=50)
+    if df_all.empty:
+        st.warning(f"No qualified jobs found for {selected_student_name} (score >= 0.4)")
+else:
+    df_all = fetch_jobs_with_evals()
 
 if df_all.empty:
     st.info("No job data found. Run the sync pipeline to populate Supabase.")
@@ -574,6 +624,11 @@ st.markdown(
 )
 
 display_cols = [c for c in DISPLAY_COLS if c in df.columns]
+
+# Add fit_score column when showing personalized student jobs
+if selected_student_id and "fit_score" in df.columns:
+    display_cols = ["fit_score"] + display_cols
+
 display_df = df[display_cols].copy()
 
 # Format score
