@@ -234,17 +234,19 @@ def save_resume_to_supabase(
         st.error("Supabase client is None - check credentials")
         return False
 
+    # Allow saving without job_id (no foreign key constraint)
     if not job_id:
-        st.error(f"Empty job_id passed to save_resume_to_supabase")
-        return False
+        st.warning("No job_id - saving resume without job reference")
 
     try:
-        result = client.table("resumes").insert({
-            "job_id": job_id,
+        data = {
             "tailored_resume_md": resume_md,
             "match_score": match_score,
             "status": "generated",
-        }).execute()
+        }
+        if job_id:
+            data["job_id"] = job_id
+        result = client.table("resumes").insert(data).execute()
         return True
     except Exception as exc:
         st.error(f"Save failed: {exc}")
@@ -412,8 +414,9 @@ if selected_job_for_resume != "— select —" and base_resume:
     job_id = job_row.get("id", "")
     # Debug: show what job_id we're getting
     if not job_id:
-        st.error(f"Job ID not found for: {job_row.get('company')} - {job_row.get('title')}")
-    elif generate_btn:
+        st.warning(f"Job ID missing - will save without foreign key")
+    
+    if generate_btn:
         with st.spinner("Generating tailored resume..."):
             result = generate_resume(job_info, base_resume)
             if result.get("success"):
