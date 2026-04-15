@@ -24,6 +24,20 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.markdown("""
+<style>
+.stApp {
+    background-color: #0f1117 !important;
+}
+[data-testid="stAppViewContainer"] {
+    background-color: #0f1117 !important;
+}
+[data-testid="stMain"] {
+    background-color: #0f1117 !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ── Global CSS ───────────────────────────────────────────────────────────────
 # Interface Design principles: 8px base, border-only depth, cool slate palette
 st.markdown(
