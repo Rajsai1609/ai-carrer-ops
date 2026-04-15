@@ -239,10 +239,15 @@ def save_resume_to_supabase(
     """Save generated resume to Supabase resumes table."""
     client = get_client()
     if client is None:
+        st.error("Supabase client is None - check credentials")
+        return False
+
+    if not job_id:
+        st.error(f"Empty job_id passed to save_resume_to_supabase")
         return False
 
     try:
-        client.table("resumes").insert({
+        result = client.table("resumes").insert({
             "job_id": job_id,
             "tailored_resume_md": resume_md,
             "match_score": match_score,
@@ -250,7 +255,7 @@ def save_resume_to_supabase(
         }).execute()
         return True
     except Exception as exc:
-        st.warning(f"Could not save resume: {exc}")
+        st.error(f"Save failed: {exc}")
         return False
 
 
