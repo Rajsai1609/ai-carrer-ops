@@ -200,17 +200,19 @@ RESUME_AI_URL = os.environ.get(
 def generate_resume(job_info: dict, base_resume: str) -> dict:
     """Call ResumeAI API to generate a tailored resume."""
     try:
-        # Use the correct API endpoint and field names
+        payload = {
+            "base_resume": base_resume,
+            "job": {
+                "company": job_info.get("company", ""),
+                "title": job_info.get("title", ""),
+                "job_description": job_info.get("description", ""),
+            }
+        }
+        # Debug: log the payload
+        st.write("Debug payload:", payload)
         response = requests.post(
             f"{RESUME_AI_URL}/api/tailor",
-            json={
-                "base_resume": base_resume,
-                "job": {
-                    "company": job_info.get("company", ""),
-                    "title": job_info.get("title", ""),
-                    "job_description": job_info.get("description", ""),
-                }
-            },
+            json=payload,
             timeout=120,
         )
         if response.status_code == 200:
