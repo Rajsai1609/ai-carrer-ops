@@ -402,10 +402,12 @@ with col_right:
 if selected_job_for_resume != "— select —" and base_resume:
     idx = job_options.index(selected_job_for_resume)
     job_row = df.iloc[idx]
+    # Use report_markdown if available, otherwise fall back to title/company
+    report = job_row.get("report_markdown", "") or job_row.get("title", "")
     job_info = {
         "company": job_row.get("company", ""),
         "title": job_row.get("title", ""),
-        "description": job_row.get("report_markdown", "")[:2000],  # Limit description length
+        "description": (job_row.get("company", "") + " - " + job_row.get("title", ""))[:2000],
     }
     job_id = job_row.get("id", "")
     # Debug: show what job_id we're getting
