@@ -666,8 +666,6 @@ _CHART_LAYOUT = dict(
     plot_bgcolor="rgba(0,0,0,0)",
     font=dict(family="Inter, sans-serif", color="#e2e8f0"),
     margin=dict(t=40, l=10, r=10, b=10),
-    xaxis=dict(gridcolor="rgba(255,255,255,0.1)", color="#e2e8f0"),
-    yaxis=dict(gridcolor="rgba(255,255,255,0.1)", color="#e2e8f0"),
 )
 
 ch1, ch2 = st.columns(2)
@@ -685,10 +683,13 @@ with ch1:
             fig = px.bar(time_df, x="eval_date", y="count",
                          labels={"eval_date": "", "count": "Jobs"},
                          color_discrete_sequence=["#7c3aed"])
-            fig.update_layout(**_CHART_LAYOUT,
-                              title=dict(text="Jobs Graded Over Time", font=dict(size=14, color="#f1f5f9")),
-                              xaxis=dict(gridcolor="rgba(148,163,184,0.08)", linecolor="rgba(0,0,0,0)"),
-                              yaxis=dict(gridcolor="rgba(148,163,184,0.08)", linecolor="rgba(0,0,0,0)"))
+            layout = dict(_CHART_LAYOUT)
+            layout.update({
+                "title": dict(text="Jobs Graded Over Time", font=dict(size=14, color="#f1f5f9")),
+                "xaxis": dict(gridcolor="rgba(255,255,255,0.1)", color="#e2e8f0", linecolor="rgba(0,0,0,0)"),
+                "yaxis": dict(gridcolor="rgba(255,255,255,0.1)", color="#e2e8f0", linecolor="rgba(0,0,0,0)"),
+            })
+            fig.update_layout(**layout)
             fig.update_traces(marker_line_width=0)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         else:
@@ -718,9 +719,12 @@ with ch2:
                 textinfo="label+percent",
                 textfont=dict(size=11, color="#f1f5f9"),
             ))
-            fig2.update_layout(**_CHART_LAYOUT,
-                               title=dict(text="Grade Distribution", font=dict(size=14, color="#f1f5f9")),
-                               showlegend=False)
+            layout2 = dict(_CHART_LAYOUT)
+            layout2.update({
+                "title": dict(text="Grade Distribution", font=dict(size=14, color="#f1f5f9")),
+                "showlegend": False,
+            })
+            fig2.update_layout(**layout2)
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
         else:
             st.info("No grade data yet.")
@@ -732,9 +736,12 @@ with ch2:
         cat_counts.columns = ["category", "count"]
         fig2 = px.pie(cat_counts, values="count", names="category", hole=0.55,
                       color_discrete_sequence=px.colors.sequential.Purpor)
-        fig2.update_layout(**_CHART_LAYOUT,
-                           title=dict(text="Job Categories", font=dict(size=14, color="#f1f5f9")),
-                           showlegend=False)
+        layout2 = dict(_CHART_LAYOUT)
+        layout2.update({
+            "title": dict(text="Job Categories", font=dict(size=14, color="#f1f5f9")),
+            "showlegend": False,
+        })
+        fig2.update_layout(**layout2)
         fig2.update_traces(textfont=dict(color="#f1f5f9"))
         st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
     else:
@@ -758,10 +765,15 @@ if "company" in df_all.columns:
                   labels={"count": "Jobs", "company": ""},
                   color="count",
                   color_continuous_scale=["#312e81", "#7c3aed", "#a78bfa"])
-    fig3.update_layout(**_CHART_LAYOUT,
-                       coloraxis_showscale=False, height=360,
-                       yaxis=dict(tickfont=dict(size=11, color="#94a3b8"), gridcolor="rgba(0,0,0,0)"),
-                       xaxis=dict(gridcolor="rgba(148,163,184,0.08)"))
+    layout3 = dict(_CHART_LAYOUT)
+    layout3.update({
+        "coloraxis_showscale": False,
+        "height": 360,
+        "xaxis": dict(gridcolor="rgba(255,255,255,0.1)", color="#e2e8f0"),
+        "yaxis": dict(gridcolor="rgba(0,0,0,0)", color="#e2e8f0",
+                      tickfont=dict(size=11, color="#94a3b8")),
+    })
+    fig3.update_layout(**layout3)
     fig3.update_traces(marker_line_width=0)
     st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
