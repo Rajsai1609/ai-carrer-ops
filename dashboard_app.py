@@ -200,11 +200,11 @@ RESUME_AI_URL = os.environ.get(
 def generate_resume(job_info: dict, base_resume: str) -> dict:
     """Call ResumeAI API to generate a tailored resume."""
     try:
-        # Try with correct field names
+        # Try with correct field names from resume-agent API
         payload = {
             "base_resume": base_resume,
             "company_name": job_info.get("company", ""),
-            "title": job_info.get("title", ""),
+            "job_role": job_info.get("title", ""),
             "job_description": job_info.get("description", ""),
         }
         st.write("Debug payload:", payload)
