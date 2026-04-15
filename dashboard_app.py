@@ -197,7 +197,6 @@ def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50)
             client.table("student_top_jobs")
             .select("*")
             .eq("student_id", student_id)
-            .eq("is_usa_job", True)
             .gte("fit_score", min_score)
             .order("fit_score", desc=True)
             .limit(limit)
@@ -211,6 +210,16 @@ def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50)
         # Deduplicate by URL (keep highest fit_score per URL)
         if "url" in df.columns:
             df = df.sort_values("fit_score", ascending=False).drop_duplicates(subset="url")
+        # Filter USA jobs (loose — includes Remote/Anywhere and common state suffixes)
+        if "location" in df.columns:
+            _USA = (
+                "USA|United States|, CA|, NY|, WA|, TX|, MA|, IL"
+                "|, GA|, CO|, FL|, VA|, NC|, OH|Remote|Anywhere"
+            )
+            df = df[
+                df["location"].str.contains(_USA, case=False, na=False)
+                | df["location"].isna()
+            ]
         return df
     except Exception as exc:
         st.warning(f"Could not load student jobs: {exc}")
