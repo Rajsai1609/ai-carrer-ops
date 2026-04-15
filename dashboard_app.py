@@ -267,46 +267,70 @@ def fetch_jobs_with_evals() -> pd.DataFrame:
 
 @st.cache_data(ttl=300)
 def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50) -> pd.DataFrame:
-    """Fetch personalized jobs for a student from student_job_scores table."""
+    """Fetch personalized jobs for a student via PostgREST join on student_job_scores."""
     client = get_client()
     if client is None:
         return pd.DataFrame()
     try:
-        # Fetch scores with job details
         result = (
             client.table("student_job_scores")
-            .select("job_id, fit_score")
+            .select(
+                "fit_score, "
+                "jobs(id, url, company, title, location, career_ops_grade, "
+                "career_ops_score, visa_flag, evaluated_at)"
+            )
             .eq("student_id", student_id)
             .gte("fit_score", min_score)
             .order("fit_score", ascending=False)
             .limit(limit)
             .execute()
         )
-        scores = result.data or []
-        if not scores:
+        rows = result.data or []
+        if not rows:
             return pd.DataFrame()
-        
-        # Get job IDs
-        job_ids = [s["job_id"] for s in scores]
-        score_map = {s["job_id"]: s["fit_score"] for s in scores}
-        
-        # Fetch job details
-        jobs_result = (
-            client.table("jobs")
-            .select("id, url, company, title, career_ops_grade, career_ops_score")
-            .in_("id", job_ids)
-            .execute()
-        )
-        jobs = jobs_result.data or []
-        
-        # Add fit_score to each job
-        for job in jobs:
-            job["fit_score"] = score_map.get(job["id"], 0) * 100  # Scale to 0-100
-        
-        return pd.DataFrame(jobs)
+
+        flat: list[dict] = []
+        for r in rows:
+            job = r.pop("jobs", None) or {}
+            flat.append({"fit_score": round(r["fit_score"] * 100, 1), **job})
+
+        return pd.DataFrame(flat)
     except Exception as exc:
         st.warning(f"Could not load student jobs: {exc}")
         return pd.DataFrame()
+
+
+@st.cache_data(ttl=300)
+def fetch_student_metrics(student_id: str, min_score: float = 0.4) -> dict:
+    """Return per-student stats: total qualified jobs and top match score."""
+    client = get_client()
+    if client is None:
+        return {"total_jobs": 0, "top_score": 0}
+    try:
+        count_res = (
+            client.table("student_job_scores")
+            .select("id", count="exact")
+            .eq("student_id", student_id)
+            .gte("fit_score", min_score)
+            .execute()
+        )
+        total = count_res.count or 0
+
+        top_res = (
+            client.table("student_job_scores")
+            .select("fit_score")
+            .eq("student_id", student_id)
+            .order("fit_score", ascending=False)
+            .limit(1)
+            .execute()
+        )
+        top_rows = top_res.data or []
+        top_score = round(top_rows[0]["fit_score"] * 100, 1) if top_rows else 0.0
+
+        return {"total_jobs": total, "top_score": top_score}
+    except Exception as exc:
+        st.warning(f"Could not load student metrics: {exc}")
+        return {"total_jobs": 0, "top_score": 0}
 
 
 @st.cache_data(ttl=1800)
@@ -376,41 +400,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ── Student Profile Hero (shown when student selected) ─────────────────────
-if selected_student_id and selected_student_name != "All students":
-    initials = "".join([n[0] for n in selected_student_name.split()[:2]]).upper()
-    st.markdown(
-        f"""
-        <div style="background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%); 
-                    border: 1px solid #e9ecef; border-radius: 16px; padding: 20px; 
-                    margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
-            <div style="width: 56px; height: 56px; border-radius: 50%; 
-                        background: linear-gradient(135deg, #667eea, #764ba2);
-                        display: flex; align-items: center; justify-content: center;
-                        font-size: 20px; font-weight: 700; color: white;">
-                {initials}
-            </div>
-            <div style="flex: 1;">
-                <div style="font-size: 18px; font-weight: 700; color: #1e293b;">
-                    {selected_student_name}
-                </div>
-                <div style="display: flex; gap: 8px; margin-top: 6px;">
-                    <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; 
-                                 border-radius: 6px; font-size: 12px; font-weight: 500;">📋 OPT</span>
-                    <span style="background: #dbeafe; color: #1e40af; padding: 4px 10px; 
-                                 border-radius: 6px; font-size: 12px; font-weight: 500;">🎓 STEM</span>
-                    <span style="background: #d1fae5; color: #065f46; padding: 4px 10px; 
-                                 border-radius: 6px; font-size: 12px; font-weight: 500;">💼 H1B Friendly</span>
-                </div>
-            </div>
-            <div style="text-align: right; color: #64748b; font-size: 12px;">
-                Last updated: Just now
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("### 🔍 Filters")
@@ -453,28 +442,68 @@ with st.sidebar:
     st.caption("Cache TTL: 30 min")
 
 
+# ── Student Profile Hero (rendered after sidebar so selected_student_id is set) ──
+if selected_student_id:
+    initials = "".join([n[0] for n in selected_student_name.split()[:2]]).upper()
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+                    border: 1px solid #e9ecef; border-radius: 16px; padding: 20px;
+                    margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 56px; height: 56px; border-radius: 50%;
+                        background: linear-gradient(135deg, #667eea, #764ba2);
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 20px; font-weight: 700; color: white;">
+                {initials}
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 18px; font-weight: 700; color: #1e293b;">
+                    {selected_student_name}
+                </div>
+                <div style="color: #64748b; font-size: 13px; margin-top: 4px;">
+                    Showing personalized job matches from student_job_scores
+                </div>
+            </div>
+            <div style="text-align: right; color: #64748b; font-size: 12px;">
+                fit_score &gt; 40% · top 50 results
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # ── Metrics ──────────────────────────────────────────────────────────────────
-metrics = fetch_metrics()
-
-c1, c2, c3, c4, c5 = st.columns(5)
-
-def _metric_card(col, color_class: str, icon: str, number: int, label: str) -> None:
+def _metric_card(col, color_class: str, icon: str, value: str, label: str) -> None:
     col.markdown(
         f"""
         <div class="metric-card {color_class}">
             <div class="icon">{icon}</div>
-            <div class="number">{number:,}</div>
+            <div class="number">{value}</div>
             <div class="label">{label}</div>
         </div>
         """,
         unsafe_allow_html=True,
     )
 
-_metric_card(c1, "card-purple", "📈", metrics.get("total_jobs", 0),      "Total Jobs")
-_metric_card(c2, "card-blue",   "💼", metrics.get("total_evaluated", 0), "Jobs Evaluated")
-_metric_card(c3, "card-green",  "⭐", metrics.get("top_matches", 0),     "A/A+ Matches")
-_metric_card(c4, "card-orange", "🎯", 0, "Best Match Score")  # Placeholder
-_metric_card(c5, "card-purple", "🆕", 0, "New Today")  # Placeholder
+
+if selected_student_id:
+    # Per-student metric cards
+    sm = fetch_student_metrics(selected_student_id, min_score=0.4)
+    global_m = fetch_metrics()
+    c1, c2, c3, c4 = st.columns(4)
+    _metric_card(c1, "card-purple", "📈", f"{sm['total_jobs']:,}",         "Matched Jobs")
+    _metric_card(c2, "card-blue",   "🎯", f"{sm['top_score']:.0f}%",       "Top Match Score")
+    _metric_card(c3, "card-green",  "⭐", f"{global_m.get('top_matches', 0):,}", "A/A+ (Global)")
+    _metric_card(c4, "card-orange", "📄", f"{global_m.get('resumes_generated', 0):,}", "Resumes Generated")
+else:
+    # Global metric cards
+    global_m = fetch_metrics()
+    c1, c2, c3, c4 = st.columns(4)
+    _metric_card(c1, "card-purple", "📈", f"{global_m.get('total_jobs', 0):,}",      "Total Jobs Scraped")
+    _metric_card(c2, "card-blue",   "💼", f"{global_m.get('total_evaluated', 0):,}", "Jobs Evaluated")
+    _metric_card(c3, "card-green",  "⭐", f"{global_m.get('top_matches', 0):,}",     "A / A+ Matches")
+    _metric_card(c4, "card-orange", "📄", f"{global_m.get('resumes_generated', 0):,}", "Resumes Generated")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -655,7 +684,8 @@ else:
 # ── Apply filters for jobs table ─────────────────────────────────────────────
 df = df_all.copy()
 
-if grade_filter:
+# Grade filter only applies to the global (all-students) view
+if not selected_student_id and grade_filter and "career_ops_grade" in df.columns:
     df = df[df["career_ops_grade"].isin(grade_filter)]
 
 if company_search:
@@ -664,109 +694,91 @@ if company_search:
 if hide_visa_flagged and "visa_flag" in df.columns:
     df = df[df["visa_flag"].ne(True)]
 
-if selected_student_id:
-    st.info(f"👤 Viewing jobs for **{selected_student_name}**")
-
-
-# ── Jobs Table ───────────────────────────────────────────────────────────────
-st.markdown(
-    f'<div class="section-title">📋 Jobs ({len(df):,} results)</div>',
-    unsafe_allow_html=True,
-)
-
-display_cols = [c for c in DISPLAY_COLS if c in df.columns]
-
-# Add fit_score column when showing personalized student jobs
-if selected_student_id and "fit_score" in df.columns:
-    display_cols = ["fit_score"] + display_cols
-
-display_df = df[display_cols].copy()
-
-# Format score
-if "career_ops_score" in display_df.columns:
-    display_df["career_ops_score"] = display_df["career_ops_score"].apply(
-        lambda v: f"{float(v):.2f}" if pd.notna(v) and v != "" else "—"
-    )
-
-# Format date
-if "evaluated_at" in display_df.columns:
-    display_df["evaluated_at"] = pd.to_datetime(
-        display_df["evaluated_at"], errors="coerce"
-    ).dt.strftime("%Y-%m-%d")
 
 def _row_style(row: pd.Series) -> list[str]:
     grade = str(row.get("career_ops_grade", ""))
     return [GRADE_COLORS.get(grade, "")] * len(row)
 
 
-# ── Jobs as Cards (replacing table) ────────────────────────────────────────
-st.markdown('<div class="section-title">🎯 Job Opportunities</div>', unsafe_allow_html=True)
+table_title = (
+    f"🎯 {selected_student_name}'s Matched Jobs ({len(df):,} results)"
+    if selected_student_id
+    else f"📋 Jobs ({len(df):,} results)"
+)
+st.markdown(f'<div class="section-title">{table_title}</div>', unsafe_allow_html=True)
 
 if df.empty:
-    st.info("No jobs found.")
+    st.info(
+        f"No qualified jobs found for {selected_student_name} (fit_score ≥ 40%)."
+        if selected_student_id
+        else "No jobs match the current filters."
+    )
 else:
-    for idx, row in df.iterrows():
+    for _, row in df.iterrows():
         company = row.get("company", "Unknown Company")
         title = row.get("title", "Unknown Title")
-        grade = row.get("career_ops_grade", "-")
-        score = row.get("fit_score", row.get("career_ops_score", 0))
-        url = row.get("url", "#")
-        
-        # Grade color
-        grade_colors = {
-            "A+": "#16a34a", "A": "#22c55e", "B+": "#3b82f6", "B": "#60a5fa",
-            "C+": "#94a3b8", "C": "#94a3b8", "D": "#f87171", "F": "#ef4444"
-        }
-        grade_color = grade_colors.get(str(grade), "#94a3b8")
-        
+        grade = row.get("career_ops_grade", "—")
+        job_url = row.get("url", "#")
+
+        # For student view use fit_score; for global view use career_ops_score
+        if selected_student_id and "fit_score" in row:
+            raw_score = row["fit_score"]  # already multiplied by 100
+            score_label = "Match Score"
+        else:
+            raw = row.get("career_ops_score", 0)
+            try:
+                raw_score = float(raw) * 20 if pd.notna(raw) and raw != "" else 0
+            except (ValueError, TypeError):
+                raw_score = 0
+            score_label = "Career Score"
+
+        try:
+            score_int = int(raw_score)
+        except (ValueError, TypeError):
+            score_int = 0
+
+        grade_color = GRADE_PALETTE.get(str(grade), "#94a3b8")
+
+        # Build badge row
+        badges = f'<span style="background:{grade_color}22; color:{grade_color}; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600;">Grade: {grade}</span>'
+        if selected_student_id:
+            badges += f'<span style="background:#ede9fe; color:#6d28d9; padding:4px 10px; border-radius:6px; font-size:12px; margin-left:8px;">🎯 {raw_score:.1f}% fit</span>'
+
         st.markdown(
             f"""
-            <div style="background: white; border-radius: 12px; padding: 20px; 
-                        margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-                        border: 1px solid #e9ecef;">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
-                            <div style="width: 44px; height: 44px; border-radius: 10px; 
-                                        background: linear-gradient(135deg, #667eea22, #764ba222);
-                                        display: flex; align-items: center; justify-content: center;
-                                        font-size: 18px; font-weight: 700; color: #667eea;">
-                                {company[:1]}
+            <div style="background:white; border-radius:12px; padding:20px;
+                        margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.08);
+                        border:1px solid #e9ecef;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                    <div style="flex:1;">
+                        <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
+                            <div style="width:44px; height:44px; border-radius:10px;
+                                        background:linear-gradient(135deg,#667eea22,#764ba222);
+                                        display:flex; align-items:center; justify-content:center;
+                                        font-size:18px; font-weight:700; color:#667eea;">
+                                {str(company)[:1].upper()}
                             </div>
                             <div>
-                                <div style="font-size: 16px; font-weight: 700; color: #1e293b;">{title}</div>
-                                <div style="font-size: 13px; color: #64748b;">{company}</div>
+                                <div style="font-size:16px; font-weight:700; color:#1e293b;">{title}</div>
+                                <div style="font-size:13px; color:#64748b;">{company}</div>
                             </div>
                         </div>
-                        <div style="display: flex; gap: 8px; margin-top: 10px;">
-                            <span style="background: {grade_color}22; color: {grade_color}; 
-                                         padding: 4px 10px; border-radius: 6px; 
-                                         font-size: 12px; font-weight: 600;">Grade: {grade}</span>
-                            <span style="background: #f1f5f9; color: #475569; 
-                                         padding: 4px 10px; border-radius: 6px; 
-                                         font-size: 12px;">🏠 Remote</span>
-                            <span style="background: #fef3c7; color: #92400e; 
-                                         padding: 4px 10px; border-radius: 6px; 
-                                         font-size: 12px;">🎓 STEM</span>
+                        <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
+                            {badges}
                         </div>
                     </div>
-                    <div style="text-align: right; min-width: 100px;">
-                        <div style="font-size: 24px; font-weight: 700; color: #667eea;">
-                            {int(float(score)) if score else 0}%
-                        </div>
-                        <div style="font-size: 11px; color: #64748b;">Match Score</div>
+                    <div style="text-align:right; min-width:90px;">
+                        <div style="font-size:24px; font-weight:700; color:#667eea;">{score_int}%</div>
+                        <div style="font-size:11px; color:#64748b;">{score_label}</div>
                     </div>
                 </div>
-                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f1f5f9;
-                            display: flex; gap: 10px;">
-                    <a href="{url}" target="_blank" style="flex: 1;">
-                        <button style="background: #667eea; color: white; border: none; 
-                                       padding: 10px 20px; border-radius: 8px; font-weight: 600;
-                                       cursor: pointer; width: 100%;">Apply Now</button>
+                <div style="margin-top:16px; padding-top:16px; border-top:1px solid #f1f5f9;">
+                    <a href="{job_url}" target="_blank"
+                       style="background:#667eea; color:white; border:none; padding:10px 24px;
+                              border-radius:8px; font-weight:600; font-size:14px;
+                              text-decoration:none; display:inline-block;">
+                        Apply Now ↗
                     </a>
-                    <button style="background: white; color: #667eea; border: 1px solid #667eea; 
-                                   padding: 10px 20px; border-radius: 8px; font-weight: 600;
-                                   cursor: pointer;">Generate Resume</button>
                 </div>
             </div>
             """,
