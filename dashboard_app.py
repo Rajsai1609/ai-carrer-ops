@@ -25,16 +25,44 @@ st.set_page_config(
 )
 
 # ── Global CSS ───────────────────────────────────────────────────────────────
+# Interface Design principles: 8px base, border-only depth, cool slate palette
 st.markdown(
     """
     <style>
-    /* ── Sidebar pinned open ── */
-    [data-testid="collapsedControl"] {
-        display: none !important;
+    /* ── Design Tokens (8px base, border-only depth) ── */
+    :root {
+        --spacing-xs: 4px;
+        --spacing-sm: 8px;
+        --spacing-md: 12px;
+        --spacing-lg: 16px;
+        --spacing-xl: 24px;
+        --spacing-2xl: 32px;
+        
+        --surface-1: #ffffff;
+        --surface-2: #f8fafc;
+        --surface-3: #f1f5f9;
+        
+        --border-subtle: rgba(15, 23, 42, 0.06);
+        --border-default: rgba(15, 23, 42, 0.12);
+        --border-strong: rgba(15, 23, 42, 0.18);
+        
+        --accent-purple: #7c3aed;
+        --accent-blue: #2563eb;
+        --accent-green: #16a34a;
+        --accent-orange: #ea580c;
+        
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --text-muted: #94a3b8;
     }
+
+    /* ── Sidebar pinned open ── */
+    [data-testid="collapsedControl"] { display: none !important; }
     [data-testid="stSidebar"] {
         min-width: 300px !important;
         max-width: 300px !important;
+        background-color: #0f172a !important;
+        border-right: 0.5px solid rgba(255,255,255,0.06) !important;
     }
     [data-testid="stSidebar"][aria-expanded="false"] {
         min-width: 300px !important;
@@ -44,40 +72,186 @@ st.markdown(
 
     /* ── Base ── */
     html, body, [data-testid="stAppViewContainer"] {
-        background-color: #f8f9fa !important;
-        font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
+        background-color: #f8fafc !important;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        color: var(--text-primary);
     }
-    [data-testid="stSidebar"] {
-        background-color: #1e293b !important;  /* Dark sidebar */
-        border-right: 1px solid #334155;
-        color: #e2e8f0;
-    }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: #f1f5f9 !important;
-    }
-    /* Remove default Streamlit top padding */
-    .block-container { padding-top: 1.5rem !important; }
+    .block-container { padding-top: 1.5rem !important; padding-bottom: 2rem !important; }
 
     /* ── Mobile Responsive ── */
     @media (max-width: 768px) {
-        .mct-header { padding: 16px 20px !important; }
+        .mct-header { padding: var(--spacing-lg) !important; }
         .mct-header h1 { font-size: 1.5rem !important; }
-        .metric-card { min-height: 80px !important; padding: 14px 16px !important; }
-        .metric-card .number { font-size: 1.8rem !important; }
-    } }
+        .metric-card { min-height: 80px !important; padding: var(--spacing-lg) !important; }
+    }
 
     /* ── Header ── */
     .mct-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 16px;
-        padding: 28px 36px;
-        margin-bottom: 28px;
+        background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+        border-radius: 12px;
+        padding: var(--spacing-xl);
+        margin-bottom: var(--spacing-xl);
         color: white;
-        box-shadow: 0 4px 20px rgba(102,126,234,0.35);
+        border: 0.5px solid rgba(255,255,255,0.1);
     }
     .mct-header h1 {
-        font-size: 2rem;
-        font-weight: 800;
+        font-size: 1.75rem;
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        margin: 0 0 var(--spacing-xs) 0;
+    }
+    .mct-header p { font-size: 0.875rem; opacity: 0.85; margin: 0; }
+    .mct-powered { font-size: 0.75rem; opacity: 0.6; margin-top: var(--spacing-sm) !important; letter-spacing: 0.5px; }
+
+    /* ── Section Title ── */
+    .section-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: var(--spacing-lg);
+        letter-spacing: -0.01em;
+    }
+
+    /* ── Metric cards ── */
+    .metric-card {
+        border-radius: 8px;
+        padding: var(--spacing-lg);
+        color: white;
+        border: 0.5px solid rgba(255,255,255,0.08);
+        min-height: 88px;
+    }
+    .metric-card .icon {
+        position: absolute;
+        top: var(--spacing-sm);
+        right: var(--spacing-sm);
+        font-size: 1.25rem;
+        opacity: 0.4;
+    }
+    .metric-card .number {
+        font-size: 1.75rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .metric-card .label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        opacity: 0.85;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .card-purple { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+    .card-blue   { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+    .card-green  { background: linear-gradient(135deg, #16a34a, #15803d); }
+    .card-orange { background: linear-gradient(135deg, #ea580c, #dc2626); }
+
+    /* ── Job Cards ── */
+    .job-card {
+        background: var(--surface-1);
+        border-radius: 8px;
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-md);
+        border: 0.5px solid var(--border-subtle);
+        transition: border-color 0.15s ease;
+    }
+    .job-card:hover {
+        border-color: var(--border-default);
+    }
+    .job-card-company {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #7c3aed15, #2563eb15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        color: #7c3aed;
+        font-size: 1rem;
+    }
+    .job-card-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+    .job-card-company-name {
+        font-size: 0.8125rem;
+        color: var(--text-secondary);
+    }
+    .job-card-badge {
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 0.6875rem;
+        font-weight: 600;
+    }
+    .grade-a { background: #dcfce7; color: #166534; }
+    .grade-b { background: #dbeafe; color: #1e40af; }
+    .grade-c { background: #f1f5f9; color: #475569; }
+    .job-card-score {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #7c3aed;
+    }
+    .btn-primary {
+        background: #7c3aed;
+        color: white;
+        border: none;
+        padding: 10px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.8125rem;
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .btn-primary:hover { background: #6d28d9; }
+    .btn-secondary {
+        background: white;
+        color: #7c3aed;
+        border: 0.5px solid #7c3aed;
+        padding: 10px 16px;
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.8125rem;
+        cursor: pointer;
+    }
+
+    /* ── Student Profile Hero ── */
+    .student-hero {
+        background: linear-gradient(135deg, #7c3aed08, #2563eb08);
+        border: 0.5px solid var(--border-default);
+        border-radius: 10px;
+        padding: var(--spacing-lg);
+        margin-bottom: var(--spacing-xl);
+        display: flex;
+        align-items: center;
+        gap: var(--spacing-md);
+    }
+    .student-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #7c3aed, #4f46e5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        font-weight: 700;
+        color: white;
+    }
+    .student-name {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: var(--text-primary);
+    }
+    .student-badge {
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.6875rem;
+        font-weight: 500;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
         margin: 0 0 4px 0;
         letter-spacing: -0.5px;
     }
@@ -752,29 +926,23 @@ else:
             score_int = 0
 
         grade_color = GRADE_PALETTE.get(str(grade), "#94a3b8")
+        grade_class = "grade-a" if grade in ["A+", "A"] else "grade-b" if grade in ["B+", "B"] else "grade-c"
 
         # Build badge row
-        badges = f'<span style="background:{grade_color}22; color:{grade_color}; padding:4px 10px; border-radius:6px; font-size:12px; font-weight:600;">Grade: {grade}</span>'
+        badges = f'<span class="job-card-badge {grade_class}">Grade: {grade}</span>'
         if selected_student_id:
             badges += f'<span style="background:#ede9fe; color:#6d28d9; padding:4px 10px; border-radius:6px; font-size:12px; margin-left:8px;">🎯 {raw_score:.1f}% fit</span>'
 
         st.markdown(
             f"""
-            <div style="background:white; border-radius:12px; padding:20px;
-                        margin-bottom:16px; box-shadow:0 2px 8px rgba(0,0,0,0.08);
-                        border:1px solid #e9ecef;">
+            <div class="job-card">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start;">
                     <div style="flex:1;">
                         <div style="display:flex; align-items:center; gap:12px; margin-bottom:8px;">
-                            <div style="width:44px; height:44px; border-radius:10px;
-                                        background:linear-gradient(135deg,#667eea22,#764ba222);
-                                        display:flex; align-items:center; justify-content:center;
-                                        font-size:18px; font-weight:700; color:#667eea;">
-                                {str(company)[:1].upper()}
-                            </div>
+                            <div class="job-card-company">{str(company)[:1].upper()}</div>
                             <div>
-                                <div style="font-size:16px; font-weight:700; color:#1e293b;">{title}</div>
-                                <div style="font-size:13px; color:#64748b;">{company}</div>
+                                <div class="job-card-title">{title}</div>
+                                <div class="job-card-company-name">{company}</div>
                             </div>
                         </div>
                         <div style="display:flex; gap:8px; margin-top:10px; flex-wrap:wrap;">
@@ -782,15 +950,12 @@ else:
                         </div>
                     </div>
                     <div style="text-align:right; min-width:90px;">
-                        <div style="font-size:24px; font-weight:700; color:#667eea;">{score_int}%</div>
+                        <div class="job-card-score">{score_int}%</div>
                         <div style="font-size:11px; color:#64748b;">{score_label}</div>
                     </div>
                 </div>
                 <div style="margin-top:16px; padding-top:16px; border-top:1px solid #f1f5f9;">
-                    <a href="{job_url}" target="_blank"
-                       style="background:#667eea; color:white; border:none; padding:10px 24px;
-                              border-radius:8px; font-weight:600; font-size:14px;
-                              text-decoration:none; display:inline-block;">
+                    <a href="{job_url}" target="_blank" class="btn-primary">
                         Apply Now ↗
                     </a>
                 </div>
