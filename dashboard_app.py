@@ -200,10 +200,10 @@ RESUME_AI_URL = os.environ.get(
 def generate_resume(job_info: dict, base_resume: str) -> dict:
     """Call ResumeAI API to generate a tailored resume."""
     try:
-        # Try with job_description at top level (not nested)
+        # Try with correct field names
         payload = {
             "base_resume": base_resume,
-            "company": job_info.get("company", ""),
+            "company_name": job_info.get("company", ""),
             "title": job_info.get("title", ""),
             "job_description": job_info.get("description", ""),
         }
