@@ -607,17 +607,15 @@ global_m = fetch_metrics()
 
 if selected_student_id:
     sm = fetch_student_metrics(selected_student_id, min_score=0.4)
-    c1, c2, c3, c4 = st.columns(4)
-    _metric(c1, "card-purple", "🎯", f"{sm['total_jobs']:,}",                    "Matched Jobs")
-    _metric(c2, "card-blue",   "📈", f"{sm['top_score']:.0f}%",                  "Top Match Score")
-    _metric(c3, "card-green",  "⭐", f"{global_m.get('top_matches', 0):,}",       "A / A+ (Global)")
-    _metric(c4, "card-orange", "📄", f"{global_m.get('resumes_generated', 0):,}", "Resumes Generated")
+    c1, c2, c3 = st.columns(3)
+    _metric(c1, "card-purple", "🎯", f"{sm['total_jobs']:,}",              "Matched Jobs")
+    _metric(c2, "card-blue",   "📈", f"{sm['top_score']:.0f}%",            "Top Match Score")
+    _metric(c3, "card-green",  "⭐", f"{global_m.get('top_matches', 0):,}", "A / A+ (Global)")
 else:
-    c1, c2, c3, c4 = st.columns(4)
-    _metric(c1, "card-purple", "📋", f"{global_m.get('total_jobs', 0):,}",        "Total Jobs Scraped")
-    _metric(c2, "card-blue",   "💼", f"{global_m.get('total_evaluated', 0):,}",   "Jobs Evaluated")
-    _metric(c3, "card-green",  "⭐", f"{global_m.get('top_matches', 0):,}",       "A / A+ Matches")
-    _metric(c4, "card-orange", "📄", f"{global_m.get('resumes_generated', 0):,}", "Resumes Generated")
+    c1, c2, c3 = st.columns(3)
+    _metric(c1, "card-purple", "📋", f"{global_m.get('total_jobs', 0):,}",      "Total Jobs Scraped")
+    _metric(c2, "card-blue",   "💼", f"{global_m.get('total_evaluated', 0):,}", "Jobs Evaluated")
+    _metric(c3, "card-green",  "⭐", f"{global_m.get('top_matches', 0):,}",     "A / A+ Matches")
 
 st.markdown("<div style='height:28px'></div>", unsafe_allow_html=True)
 
@@ -666,8 +664,10 @@ st.markdown('<div class="section-title">📊 Analytics</div>', unsafe_allow_html
 _CHART_LAYOUT = dict(
     paper_bgcolor="rgba(0,0,0,0)",
     plot_bgcolor="rgba(0,0,0,0)",
-    font=dict(family="Inter, sans-serif", color="#94a3b8"),
+    font=dict(family="Inter, sans-serif", color="#e2e8f0"),
     margin=dict(t=40, l=10, r=10, b=10),
+    xaxis=dict(gridcolor="rgba(255,255,255,0.1)", color="#e2e8f0"),
+    yaxis=dict(gridcolor="rgba(255,255,255,0.1)", color="#e2e8f0"),
 )
 
 ch1, ch2 = st.columns(2)
@@ -690,7 +690,7 @@ with ch1:
                               xaxis=dict(gridcolor="rgba(148,163,184,0.08)", linecolor="rgba(0,0,0,0)"),
                               yaxis=dict(gridcolor="rgba(148,163,184,0.08)", linecolor="rgba(0,0,0,0)"))
             fig.update_traces(marker_line_width=0)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         else:
             st.info("No dated evaluations yet.")
     else:
@@ -721,7 +721,7 @@ with ch2:
             fig2.update_layout(**_CHART_LAYOUT,
                                title=dict(text="Grade Distribution", font=dict(size=14, color="#f1f5f9")),
                                showlegend=False)
-            st.plotly_chart(fig2, use_container_width=True)
+            st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
         else:
             st.info("No grade data yet.")
     elif "job_category" in df_all.columns:
@@ -736,7 +736,7 @@ with ch2:
                            title=dict(text="Job Categories", font=dict(size=14, color="#f1f5f9")),
                            showlegend=False)
         fig2.update_traces(textfont=dict(color="#f1f5f9"))
-        st.plotly_chart(fig2, use_container_width=True)
+        st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
     else:
         st.info("No category data.")
     st.markdown('</div>', unsafe_allow_html=True)
@@ -763,7 +763,7 @@ if "company" in df_all.columns:
                        yaxis=dict(tickfont=dict(size=11, color="#94a3b8"), gridcolor="rgba(0,0,0,0)"),
                        xaxis=dict(gridcolor="rgba(148,163,184,0.08)"))
     fig3.update_traces(marker_line_width=0)
-    st.plotly_chart(fig3, use_container_width=True)
+    st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar": False})
     st.markdown('</div>', unsafe_allow_html=True)
 
 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
