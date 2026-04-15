@@ -29,6 +29,14 @@ st.markdown("""
 [data-testid="collapsedControl"] {
     display: none !important;
 }
+section[data-testid="stSidebar"] {
+    min-width: 280px !important;
+    max-width: 280px !important;
+    background-color: #0f172a !important;
+}
+section[data-testid="stSidebar"] * {
+    color: #e2e8f0 !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -37,8 +45,6 @@ selected_student_id: str | None = None
 selected_student_name: str = "All Students"
 
 with st.sidebar:
-    st.write("SIDEBAR TEST")
-
     st.markdown("### 👤 Student View")
 
     _STUDENT_NAMES = [
