@@ -49,8 +49,19 @@ DISPLAY_COLS = [
 
 # ── Supabase client ──────────────────────────────────────────────────────────
 def get_client() -> Client | None:
-    url = os.environ.get("SUPABASE_URL", "")
-    key = os.environ.get("SUPABASE_KEY", "")
+    url = ""
+    key = ""
+    # Try Streamlit secrets first
+    try:
+        url = st.secrets.get("SUPABASE_URL", "")
+        key = st.secrets.get("SUPABASE_KEY", "")
+    except Exception:
+        pass
+    # Fallback to environment
+    if not url:
+        url = os.environ.get("SUPABASE_URL", "")
+    if not key:
+        key = os.environ.get("SUPABASE_KEY", "")
 
     if not url or not key:
         st.error(
