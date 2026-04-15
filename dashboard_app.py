@@ -339,12 +339,24 @@ st.dataframe(
 st.divider()
 st.subheader("Generate Tailored Resume")
 
-# Load base resume
-base_resume_path = os.path.join(os.path.dirname(__file__), "..", "scraper-2.0-agent", "data", "resume.txt")
-if os.path.exists(base_resume_path):
-    base_resume = open(base_resume_path).read()
-else:
-    base_resume = ""
+# Load base resume from GitHub API (scraper-2.0-agent repo)
+@st.cache_data(ttl=3600)
+def fetch_base_resume() -> str:
+    """Fetch base resume from scraper-2.0-agent repo."""
+    gh_pat = os.environ.get("GH_PAT", "")
+    if not gh_pat:
+        return ""
+    try:
+        url = "https://raw.githubusercontent.com/Rajsai1609/scraper-2.0-agent/main/data/resume.txt"
+        headers = {"Authorization": f"token {gh_pat}"}
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            return r.text
+    except Exception:
+        pass
+    return ""
+
+base_resume = fetch_base_resume()
 
 col_left, col_right = st.columns([2, 1])
 
