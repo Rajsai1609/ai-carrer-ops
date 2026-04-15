@@ -24,6 +24,14 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+st.markdown("""
+<style>
+[data-testid="collapsedControl"] {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ── Sidebar (must be first after set_page_config) ────────────────────────────
 selected_student_id: str | None = None
 selected_student_name: str = "All Students"
