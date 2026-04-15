@@ -248,10 +248,7 @@ st.markdown(
         font-size: 0.6875rem;
         font-weight: 500;
     }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    .mct-header h1 {
         margin: 0 0 4px 0;
         letter-spacing: -0.5px;
     }
