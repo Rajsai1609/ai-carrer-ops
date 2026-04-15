@@ -157,7 +157,13 @@ def fetch_jobs_with_evals() -> pd.DataFrame:
             evals = r.pop("evaluations", None) or []
             first_eval = evals[0] if evals else {}
             flat.append({**r, **first_eval})
-        return pd.DataFrame(flat)
+        df = pd.DataFrame(flat)
+        # Deduplicate by id (primary key), then by URL as a safety net
+        if "id" in df.columns:
+            df = df.drop_duplicates(subset="id")
+        if "url" in df.columns:
+            df = df.drop_duplicates(subset="url")
+        return df
     except Exception as exc:
         st.warning(f"Could not load jobs: {exc}")
         return pd.DataFrame()
@@ -184,7 +190,11 @@ def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50)
         if not rows:
             return pd.DataFrame()
         flat = [{**r, "fit_score": round(r["fit_score"] * 100, 1)} for r in rows]
-        return pd.DataFrame(flat)
+        df = pd.DataFrame(flat)
+        # Deduplicate by URL (keep highest fit_score per URL)
+        if "url" in df.columns:
+            df = df.sort_values("fit_score", ascending=False).drop_duplicates(subset="url")
+        return df
     except Exception as exc:
         st.warning(f"Could not load student jobs: {exc}")
         return pd.DataFrame()
