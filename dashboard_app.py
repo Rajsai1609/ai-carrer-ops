@@ -6,8 +6,10 @@ Powered by MCTechnology LLC
 from __future__ import annotations
 
 import os
+import json
 
 import pandas as pd
+import requests
 import streamlit as st
 from dotenv import load_dotenv
 from supabase import Client, create_client
@@ -178,6 +180,69 @@ def fetch_resumes() -> pd.DataFrame:
         return pd.DataFrame()
 
 
+# ── Resume generation ───────────────────────────────────────────────────────────────
+RESUME_AI_URL = os.environ.get(
+    "RESUME_AI_URL", "https://resume-agent-production-ea2e.up.railway.app"
+)
+
+
+def generate_resume(job_info: dict, base_resume: str) -> dict:
+    """Call ResumeAI API to generate a tailored resume."""
+    payload = {
+        "jobs": [
+            {
+                "company": job_info.get("company", ""),
+                "title": job_info.get("title", ""),
+                "description": job_info.get("description", ""),
+            }
+        ],
+        "resume": base_resume,
+    }
+
+    try:
+        # Use the batch-tailor endpoint
+        response = requests.post(
+            f"{RESUME_AI_URL}/batch-tailor",
+            json=payload,
+            timeout=120,
+        )
+        if response.status_code == 200:
+            data = response.json()
+            # Return the tailored resume from the response
+            return {
+                "success": True,
+                "tailored_resume": data.get("resumes", [{}])[0].get("tailored_resume", "")
+                if data.get("resumes") else "",
+            }
+        else:
+            return {"success": False, "error": f"API error: {response.status_code}"}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
+def save_resume_to_supabase(
+    job_id: str,
+    resume_md: str,
+    match_score: float = 0.0,
+) -> bool:
+    """Save generated resume to Supabase resumes table."""
+    client = get_client()
+    if client is None:
+        return False
+
+    try:
+        client.table("resumes").insert({
+            "job_id": job_id,
+            "tailored_resume_md": resume_md,
+            "match_score": match_score,
+            "status": "generated",
+        }).execute()
+        return True
+    except Exception as exc:
+        st.warning(f"Could not save resume: {exc}")
+        return False
+
+
 # ── Styling ──────────────────────────────────────────────────────────────────
 def _row_style(row: pd.Series) -> list[str]:
     grade = str(row.get("career_ops_grade", ""))
@@ -268,6 +333,67 @@ st.dataframe(
     use_container_width=True,
     hide_index=True,
 )
+
+
+# ── Generate Resume ──────────────────────────────────────────────────────────
+st.divider()
+st.subheader("Generate Tailored Resume")
+
+# Load base resume
+base_resume_path = os.path.join(os.path.dirname(__file__), "..", "scraper-2.0-agent", "data", "resume.txt")
+if os.path.exists(base_resume_path):
+    base_resume = open(base_resume_path).read()
+else:
+    base_resume = ""
+
+col_left, col_right = st.columns([2, 1])
+
+with col_left:
+    # Job selector for resume generation
+    job_options = df.apply(
+        lambda r: f"{r.get('company', '?')} — {r.get('title', '?')} ({r.get('career_ops_grade', '?')})",
+        axis=1,
+    ).tolist()
+    selected_job_for_resume = st.selectbox(
+        "Select job to tailor resume for:",
+        ["— select —"] + job_options,
+        key="resume_job_select",
+    )
+
+with col_right:
+    generate_btn = st.button(
+        "Generate Resume",
+        type="primary",
+        disabled=(selected_job_for_resume == "— select —" or not base_resume),
+    )
+
+if selected_job_for_resume != "— select —" and base_resume:
+    idx = job_options.index(selected_job_for_resume)
+    job_row = df.iloc[idx]
+    job_info = {
+        "company": job_row.get("company", ""),
+        "title": job_row.get("title", ""),
+        "description": job_row.get("report_markdown", "")[:2000],  # Limit description length
+    }
+    job_id = job_row.get("id", "")
+
+    if generate_btn:
+        with st.spinner("Generating tailored resume..."):
+            result = generate_resume(job_info, base_resume)
+            if result.get("success"):
+                tailored = result.get("tailored_resume", "")
+                if tailored and save_resume_to_supabase(job_id, tailored, job_row.get("career_ops_score", 0)):
+                    st.success("Resume generated and saved!")
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    st.error("Failed to save resume to database")
+            else:
+                st.error(f"Generation failed: {result.get('error', 'Unknown error')}")
+    else:
+        st.info("Select a job above and click 'Generate Resume' to create a tailored resume.")
+elif not base_resume:
+    st.warning("Base resume not found. Please ensure data/resume.txt exists in scraper-2.0-agent.")
 
 
 # ── Job detail expander ──────────────────────────────────────────────────────
