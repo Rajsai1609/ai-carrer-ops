@@ -18,8 +18,8 @@ from supabase import Client, create_client
 load_dotenv()
 
 st.set_page_config(
-    page_title="MCT PathAI — Job Intelligence",
-    page_icon="🚀",
+    page_title="MCT PathAI",
+    page_icon="🎯",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -28,6 +28,20 @@ st.set_page_config(
 st.markdown(
     """
     <style>
+    /* ── Sidebar pinned open ── */
+    [data-testid="collapsedControl"] {
+        display: none !important;
+    }
+    [data-testid="stSidebar"] {
+        min-width: 300px !important;
+        max-width: 300px !important;
+    }
+    [data-testid="stSidebar"][aria-expanded="false"] {
+        min-width: 300px !important;
+        width: 300px !important;
+        transform: none !important;
+    }
+
     /* ── Base ── */
     html, body, [data-testid="stAppViewContainer"] {
         background-color: #f8f9fa !important;
