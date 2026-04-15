@@ -30,7 +30,7 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 /* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*, *::before, *::after { box-sizing: border-box; }
 
 html, body,
 .stApp,
@@ -45,23 +45,31 @@ html, body,
 /* ── Sidebar ── */
 [data-testid="stSidebar"] {
     background-color: #0f172a !important;
-    border-right: 1px solid rgba(148,163,184,0.08) !important;
+    border-right: 1px solid rgba(148,163,184,0.12) !important;
     min-width: 280px !important;
     max-width: 280px !important;
 }
 [data-testid="collapsedControl"] { display: none !important; }
+
+/* Force all sidebar text visible */
+[data-testid="stSidebar"],
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3,
+[data-testid="stSidebar"] h4,
+[data-testid="stSidebar"] span,
 [data-testid="stSidebar"] label,
-[data-testid="stSidebar"] .stSelectbox label,
-[data-testid="stSidebar"] .stCheckbox label span { color: #94a3b8 !important; }
-[data-testid="stSidebar"] .sidebar-section { color: #94a3b8 !important; }
-[data-testid="stSidebar"] .sidebar-footer { color: #475569 !important; }
+[data-testid="stSidebar"] .stMarkdown {
+    color: #e2e8f0 !important;
+}
 
 /* Sidebar inputs */
 [data-testid="stSidebar"] .stTextInput input,
 [data-testid="stSidebar"] .stSelectbox > div > div,
 [data-testid="stSidebar"] .stMultiSelect > div > div {
     background-color: #1e293b !important;
-    border: 1px solid rgba(148,163,184,0.15) !important;
+    border: 1px solid rgba(148,163,184,0.2) !important;
     color: #f1f5f9 !important;
     border-radius: 8px !important;
 }
@@ -553,6 +561,7 @@ selected_student_id: str | None = None
 selected_student_name: str = "All Students"
 
 with st.sidebar:
+    st.write("SIDEBAR LOADED")
     st.markdown("### 👤 Student View")
 
     students = fetch_students()
