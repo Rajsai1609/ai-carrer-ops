@@ -553,45 +553,47 @@ selected_student_id: str | None = None
 selected_student_name: str = "All Students"
 
 with st.sidebar:
-    st.markdown("""
-    <div style="padding: 4px 0 20px;">
-        <div style="font-size:1.1rem; font-weight:800; color:#f1f5f9; letter-spacing:-0.02em;">
-            🎯 MCT PathAI
-        </div>
-        <div style="font-size:0.72rem; color:#475569; margin-top:3px; font-weight:500;
-                    letter-spacing:0.06em; text-transform:uppercase;">
-            Job Intelligence
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("### 👤 Student View")
 
-    st.markdown('<div class="sidebar-section">Student</div>', unsafe_allow_html=True)
     students = fetch_students()
     student_options = ["All Students"] + [s["name"] for s in students]
-    chosen = st.selectbox("View jobs for:", options=student_options, index=0, label_visibility="collapsed")
+
+    st.markdown("**View jobs for:**")
+    chosen = st.selectbox(
+        "",
+        options=student_options,
+        key="student_select",
+    )
     if chosen != "All Students":
         match = next((s for s in students if s["name"] == chosen), None)
         if match:
             selected_student_id = match["id"]
             selected_student_name = chosen
 
-    st.markdown('<div class="sidebar-section">Filters</div>', unsafe_allow_html=True)
-    grade_filter: list[str] = st.multiselect(
-        "Grade", options=GRADE_ORDER, default=["A+", "A"],
-    )
-    company_search: str = st.text_input("Company", placeholder="Search company…")
-    hide_visa_flagged: bool = st.checkbox("Hide visa-flagged", value=True)
+    st.markdown("---")
+    st.markdown("### 🔍 Filters")
 
-    st.markdown('<div class="sidebar-section">Actions</div>', unsafe_allow_html=True)
-    if st.button("Refresh Data", use_container_width=True):
+    grade_filter: list[str] = st.multiselect(
+        "Grade Filter",
+        options=GRADE_ORDER,
+        default=["A+", "A"],
+    )
+    company_search: str = st.text_input(
+        "Search Company",
+        placeholder="e.g. Google",
+    )
+    hide_visa_flagged: bool = st.checkbox(
+        "Hide visa-flagged jobs",
+        value=True,
+    )
+
+    if st.button("🔄 Refresh Data"):
         st.cache_data.clear()
         st.rerun()
 
-    st.markdown("""
-    <div class="sidebar-footer">
-        MCTechnology LLC · AI Automation<br>Cache refreshes every 30 min
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("---")
+    st.caption("Cache TTL: 30 min")
+    st.caption("Powered by MCTechnology LLC")
 
 
 # ── Hero ─────────────────────────────────────────────────────────────────────
