@@ -34,11 +34,23 @@ st.markdown(
         font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
     }
     [data-testid="stSidebar"] {
-        background-color: #ffffff !important;
-        border-right: 1px solid #e9ecef;
+        background-color: #1e293b !important;  /* Dark sidebar */
+        border-right: 1px solid #334155;
+        color: #e2e8f0;
+    }
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: #f1f5f9 !important;
     }
     /* Remove default Streamlit top padding */
     .block-container { padding-top: 1.5rem !important; }
+
+    /* ── Mobile Responsive ── */
+    @media (max-width: 768px) {
+        .mct-header { padding: 16px 20px !important; }
+        .mct-header h1 { font-size: 1.5rem !important; }
+        .metric-card { min-height: 80px !important; padding: 14px 16px !important; }
+        .metric-card .number { font-size: 1.8rem !important; }
+    } }
 
     /* ── Header ── */
     .mct-header {
@@ -348,6 +360,7 @@ def fetch_metrics() -> dict[str, int]:
 
 
 # ── Header ───────────────────────────────────────────────────────────────────
+# Gradient header
 st.markdown(
     """
     <div class="mct-header">
@@ -358,6 +371,41 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# ── Student Profile Hero (shown when student selected) ─────────────────────
+if selected_student_id and selected_student_name != "All students":
+    initials = "".join([n[0] for n in selected_student_name.split()[:2]]).upper()
+    st.markdown(
+        f"""
+        <div style="background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%); 
+                    border: 1px solid #e9ecef; border-radius: 16px; padding: 20px; 
+                    margin-bottom: 24px; display: flex; align-items: center; gap: 16px;">
+            <div style="width: 56px; height: 56px; border-radius: 50%; 
+                        background: linear-gradient(135deg, #667eea, #764ba2);
+                        display: flex; align-items: center; justify-content: center;
+                        font-size: 20px; font-weight: 700; color: white;">
+                {initials}
+            </div>
+            <div style="flex: 1;">
+                <div style="font-size: 18px; font-weight: 700; color: #1e293b;">
+                    {selected_student_name}
+                </div>
+                <div style="display: flex; gap: 8px; margin-top: 6px;">
+                    <span style="background: #fef3c7; color: #92400e; padding: 4px 10px; 
+                                 border-radius: 6px; font-size: 12px; font-weight: 500;">📋 OPT</span>
+                    <span style="background: #dbeafe; color: #1e40af; padding: 4px 10px; 
+                                 border-radius: 6px; font-size: 12px; font-weight: 500;">🎓 STEM</span>
+                    <span style="background: #d1fae5; color: #065f46; padding: 4px 10px; 
+                                 border-radius: 6px; font-size: 12px; font-weight: 500;">💼 H1B Friendly</span>
+                </div>
+            </div>
+            <div style="text-align: right; color: #64748b; font-size: 12px;">
+                Last updated: Just now
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 # ── Sidebar ──────────────────────────────────────────────────────────────────
 with st.sidebar:
@@ -406,7 +454,7 @@ with st.sidebar:
 # ── Metrics ──────────────────────────────────────────────────────────────────
 metrics = fetch_metrics()
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, c5 = st.columns(5)
 
 def _metric_card(col, color_class: str, icon: str, number: int, label: str) -> None:
     col.markdown(
@@ -420,10 +468,11 @@ def _metric_card(col, color_class: str, icon: str, number: int, label: str) -> N
         unsafe_allow_html=True,
     )
 
-_metric_card(c1, "card-purple", "📈", metrics.get("total_jobs", 0),      "Total Jobs Scraped")
+_metric_card(c1, "card-purple", "📈", metrics.get("total_jobs", 0),      "Total Jobs")
 _metric_card(c2, "card-blue",   "💼", metrics.get("total_evaluated", 0), "Jobs Evaluated")
-_metric_card(c3, "card-green",  "⭐", metrics.get("top_matches", 0),     "A / A+ Matches")
-_metric_card(c4, "card-orange", "📄", metrics.get("resumes_generated", 0), "Resumes Generated")
+_metric_card(c3, "card-green",  "⭐", metrics.get("top_matches", 0),     "A/A+ Matches")
+_metric_card(c4, "card-orange", "🎯", 0, "Best Match Score")  # Placeholder
+_metric_card(c5, "card-purple", "🆕", 0, "New Today")  # Placeholder
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -647,11 +696,80 @@ def _row_style(row: pd.Series) -> list[str]:
     grade = str(row.get("career_ops_grade", ""))
     return [GRADE_COLORS.get(grade, "")] * len(row)
 
-st.dataframe(
-    display_df.style.apply(_row_style, axis=1),
-    use_container_width=True,
-    hide_index=True,
-)
+
+# ── Jobs as Cards (replacing table) ────────────────────────────────────────
+st.markdown('<div class="section-title">🎯 Job Opportunities</div>', unsafe_allow_html=True)
+
+if df.empty:
+    st.info("No jobs found.")
+else:
+    for idx, row in df.iterrows():
+        company = row.get("company", "Unknown Company")
+        title = row.get("title", "Unknown Title")
+        grade = row.get("career_ops_grade", "-")
+        score = row.get("fit_score", row.get("career_ops_score", 0))
+        url = row.get("url", "#")
+        
+        # Grade color
+        grade_colors = {
+            "A+": "#16a34a", "A": "#22c55e", "B+": "#3b82f6", "B": "#60a5fa",
+            "C+": "#94a3b8", "C": "#94a3b8", "D": "#f87171", "F": "#ef4444"
+        }
+        grade_color = grade_colors.get(str(grade), "#94a3b8")
+        
+        st.markdown(
+            f"""
+            <div style="background: white; border-radius: 12px; padding: 20px; 
+                        margin-bottom: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                        border: 1px solid #e9ecef;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                            <div style="width: 44px; height: 44px; border-radius: 10px; 
+                                        background: linear-gradient(135deg, #667eea22, #764ba222);
+                                        display: flex; align-items: center; justify-content: center;
+                                        font-size: 18px; font-weight: 700; color: #667eea;">
+                                {company[:1]}
+                            </div>
+                            <div>
+                                <div style="font-size: 16px; font-weight: 700; color: #1e293b;">{title}</div>
+                                <div style="font-size: 13px; color: #64748b;">{company}</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 10px;">
+                            <span style="background: {grade_color}22; color: {grade_color}; 
+                                         padding: 4px 10px; border-radius: 6px; 
+                                         font-size: 12px; font-weight: 600;">Grade: {grade}</span>
+                            <span style="background: #f1f5f9; color: #475569; 
+                                         padding: 4px 10px; border-radius: 6px; 
+                                         font-size: 12px;">🏠 Remote</span>
+                            <span style="background: #fef3c7; color: #92400e; 
+                                         padding: 4px 10px; border-radius: 6px; 
+                                         font-size: 12px;">🎓 STEM</span>
+                        </div>
+                    </div>
+                    <div style="text-align: right; min-width: 100px;">
+                        <div style="font-size: 24px; font-weight: 700; color: #667eea;">
+                            {int(float(score)) if score else 0}%
+                        </div>
+                        <div style="font-size: 11px; color: #64748b;">Match Score</div>
+                    </div>
+                </div>
+                <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #f1f5f9;
+                            display: flex; gap: 10px;">
+                    <a href="{url}" target="_blank" style="flex: 1;">
+                        <button style="background: #667eea; color: white; border: none; 
+                                       padding: 10px 20px; border-radius: 8px; font-weight: 600;
+                                       cursor: pointer; width: 100%;">Apply Now</button>
+                    </a>
+                    <button style="background: white; color: #667eea; border: 1px solid #667eea; 
+                                   padding: 10px 20px; border-radius: 8px; font-weight: 600;
+                                   cursor: pointer;">Generate Resume</button>
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 
 # ── Job Detail ───────────────────────────────────────────────────────────────
