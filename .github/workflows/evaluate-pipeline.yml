@@ -23,11 +23,6 @@ jobs:
       - name: Install Playwright
         run: npx playwright install chromium --with-deps
 
-      - name: Copy pipeline.md from scraper repo
-        run: |
-          git clone https://x-access-token:${{ secrets.GH_PAT }}@github.com/Rajsai1609/scraper-2.0-agent.git /tmp/scraper
-          cp /tmp/scraper/data/pipeline.md data/pipeline.md || echo "No pipeline.md found"
-
       - name: Run pipeline evaluation
         run: node run-pipeline-auto.mjs
         env:
@@ -59,8 +54,9 @@ jobs:
         run: |
           git config user.email "github-actions@github.com"
           git config user.name "GitHub Actions"
-          git add data/grades.tsv reports/
+          git remote set-url origin https://x-access-token:${{ secrets.GH_PAT }}@github.com/Rajsai1609/ai-carrer-ops.git
+          git add -f data/grades.tsv reports/
           git diff --staged --quiet || git commit -m "chore: daily evaluation $(date -u +%Y-%m-%d)"
           git push
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
