@@ -359,6 +359,10 @@ def fetch_metrics() -> dict[str, int]:
     return metrics
 
 
+# ── Student state — initialize before any reference ─────────────────────────
+selected_student_id: str | None = None
+selected_student_name: str = "All students"
+
 # ── Header ───────────────────────────────────────────────────────────────────
 # Gradient header
 st.markdown(
@@ -427,8 +431,6 @@ with st.sidebar:
     st.markdown("### 👤 Student View")
 
     students = fetch_students()
-    selected_student_id: str | None = None
-    selected_student_name = "All students"
 
     student_options = ["All students"] + [s["name"] for s in students]
     chosen = st.selectbox(
