@@ -26,8 +26,19 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+button[kind="header"] {
+    display: none !important;
+}
 [data-testid="collapsedControl"] {
     display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+#MainMenu {
+    visibility: hidden !important;
 }
 section[data-testid="stSidebar"] {
     min-width: 280px !important;
