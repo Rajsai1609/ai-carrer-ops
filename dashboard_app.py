@@ -400,13 +400,15 @@ if selected_job_for_resume != "— select —" and base_resume:
         "description": job_row.get("report_markdown", "")[:2000],  # Limit description length
     }
     job_id = job_row.get("id", "")
-
-    if generate_btn:
-        with st.spinner("Generating tailored resume..."):
-            result = generate_resume(job_info, base_resume)
-            if result.get("success"):
-                tailored = result.get("tailored_resume", "")
-                if tailored and save_resume_to_supabase(job_id, tailored, job_row.get("career_ops_score", 0)):
+    if not job_id:
+        st.error("Job ID not found. Make sure the job has an ID from Supabase.")
+    else:
+        if generate_btn:
+            with st.spinner("Generating tailored resume..."):
+                result = generate_resume(job_info, base_resume)
+                if result.get("success"):
+                    tailored = result.get("tailored_resume", "")
+                    if tailored and save_resume_to_supabase(job_id, tailored, job_row.get("career_ops_score", 0)):
                     st.success("Resume generated and saved!")
                     st.cache_data.clear()
                     st.rerun()
