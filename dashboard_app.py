@@ -187,7 +187,7 @@ def fetch_jobs_with_evals() -> pd.DataFrame:
 
 
 @st.cache_data(ttl=300)
-def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 500) -> pd.DataFrame:
+def fetch_student_jobs(student_id: str, min_score: float = 0.5, limit: int = 500) -> pd.DataFrame:
     """Fetch personalized jobs for a student via the student_top_jobs view."""
     client = get_client()
     if client is None:
@@ -234,6 +234,10 @@ def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 500
                 df["location"].str.contains(_USA_PATTERN, case=False, na=False)
                 | df["location"].isna()
             ]
+        # Show only best-matching jobs: fit_score 50%–70% (grades A+ down to B)
+        # fit_score is already ×100 at this point
+        if "fit_score" in df.columns:
+            df = df[(df["fit_score"] >= 50) & (df["fit_score"] <= 70)]
         return df
     except Exception as exc:
         st.warning(f"Could not load student jobs: {exc}")
@@ -330,7 +334,7 @@ st.markdown("---")
 
 # ── Load Data ─────────────────────────────────────────────────────────────────
 if selected_student_id:
-    df_all = fetch_student_jobs(selected_student_id, min_score=0.4, limit=50)
+    df_all = fetch_student_jobs(selected_student_id, min_score=0.5, limit=500)
     if df_all.empty:
         st.warning(f"No qualified matches for {selected_student_name} (fit score ≥ 40%).")
 else:
