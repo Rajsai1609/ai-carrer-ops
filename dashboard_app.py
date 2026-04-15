@@ -88,24 +88,6 @@ def fetch_students() -> list[dict]:
         return []
 
 
-@st.cache_data(ttl=300)
-def fetch_student_scores(student_id: str) -> dict[str, float]:
-    """Load per-student job scores from Supabase."""
-    client = get_client()
-    if client is None:
-        return {}
-    try:
-        result = (
-            client.table("student_job_scores")
-            .select("job_id, fit_score")
-            .eq("student_id", student_id)
-            .execute()
-        )
-        return {row["job_id"]: row["fit_score"] for row in (result.data or [])}
-    except Exception:
-        return {}
-
-
 # ── Cached queries ───────────────────────────────────────────────────────────
 @st.cache_data(ttl=1800)
 def fetch_jobs_with_evals() -> pd.DataFrame:
@@ -327,16 +309,6 @@ if students:
                 selected_student_id = match["id"]
                 selected_student_name = chosen
 
-# ── Load student scores if a student is selected ───────────────────────────
-student_scores: dict[str, float] = {}
-if selected_student_id:
-    student_scores = fetch_student_scores(selected_student_id)
-    if student_scores:
-        st.info(f"👤 Viewing jobs for **{selected_student_name}**")
-    else:
-        st.warning(f"No scores yet for {selected_student_name} — run step3_multi_scorer.py")
-
-
 # ── Metrics row ──────────────────────────────────────────────────────────────
 metrics = fetch_metrics()
 
@@ -378,17 +350,9 @@ if df.empty:
     st.info("No job data found. Run the sync pipeline to populate Supabase.")
     st.stop()
 
-# Apply student score filter if a student is selected
-if selected_student_id and student_scores:
-    # Add fit_score column based on student scores (scale from 0-1 to 0-100)
-    df = df.copy()
-    df["fit_score"] = df["id"].map(lambda x: (student_scores.get(x, 0) * 100))
-    # Filter to only jobs with scores and sort by score descending
-    df = df[df["id"].isin(student_scores.keys())]
-    df = df.sort_values("fit_score", ascending=False)
-    # Add fit_score to display columns
-    if "fit_score" not in DISPLAY_COLS:
-        DISPLAY_COLS.insert(0, "fit_score")
+# Show student context if one is selected
+if selected_student_id:
+    st.info(f"👤 Viewing jobs for **{selected_student_name}**")
 
 # Apply grade filter
 if grade_filter:
