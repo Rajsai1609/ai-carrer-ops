@@ -400,8 +400,9 @@ if selected_job_for_resume != "— select —" and base_resume:
         "description": job_row.get("report_markdown", "")[:2000],  # Limit description length
     }
     job_id = job_row.get("id", "")
+    # Debug: show what job_id we're getting
     if not job_id:
-        st.error("Job ID not found. Make sure the job has an ID from Supabase.")
+        st.error(f"Job ID not found for: {job_row.get('company')} - {job_row.get('title')}")
     elif generate_btn:
         with st.spinner("Generating tailored resume..."):
             result = generate_resume(job_info, base_resume)
