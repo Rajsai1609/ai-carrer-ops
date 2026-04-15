@@ -199,34 +199,26 @@ RESUME_AI_URL = os.environ.get(
 
 def generate_resume(job_info: dict, base_resume: str) -> dict:
     """Call ResumeAI API to generate a tailored resume."""
-    payload = {
-        "jobs": [
-            {
-                "company": job_info.get("company", ""),
-                "title": job_info.get("title", ""),
-                "description": job_info.get("description", ""),
-            }
-        ],
-        "resume": base_resume,
-    }
-
     try:
-        # Use the batch-tailor endpoint
+        # Use the correct API endpoint and field names
         response = requests.post(
-            f"{RESUME_AI_URL}/batch-tailor",
-            json=payload,
+            f"{RESUME_AI_URL}/api/tailor",
+            json={
+                "base_resume": base_resume,
+                "job": {
+                    "company": job_info.get("company", ""),
+                    "title": job_info.get("title", ""),
+                    "description": job_info.get("description", ""),
+                }
+            },
             timeout=120,
         )
         if response.status_code == 200:
             data = response.json()
-            # Return the tailored resume from the response
-            return {
-                "success": True,
-                "tailored_resume": data.get("resumes", [{}])[0].get("tailored_resume", "")
-                if data.get("resumes") else "",
-            }
+            tailored = data.get("tailored_resume") or data.get("resume") or ""
+            return {"success": True, "tailored_resume": tailored}
         else:
-            return {"success": False, "error": f"API error: {response.status_code}"}
+            return {"success": False, "error": f"API error: {response.status_code} - {response.text[:200]}"}
     except Exception as exc:
         return {"success": False, "error": str(exc)}
 
