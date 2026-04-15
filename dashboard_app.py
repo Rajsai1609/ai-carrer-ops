@@ -431,6 +431,19 @@ table_title = (
 )
 st.subheader(table_title)
 
+def _fit_score_to_grade(score_pct: float) -> tuple[str, str]:
+    """Convert fit_score percentage to letter grade and badge emoji."""
+    if score_pct >= 70:
+        return "A+", "🟢"
+    if score_pct >= 60:
+        return "A",  "🔵"
+    if score_pct >= 50:
+        return "B+", "🟣"
+    if score_pct >= 40:
+        return "B",  "🟠"
+    return "C", "⚪"
+
+
 if df.empty:
     st.info(
         f"No qualified jobs for {selected_student_name} (fit score ≥ 40%)."
@@ -441,12 +454,12 @@ else:
     for _, row in df.iterrows():
         company  = str(row.get("company", "?"))
         title    = str(row.get("title", "Unknown Title"))
-        grade    = str(row.get("career_ops_grade", "—"))
         job_url  = str(row.get("url", "#"))
         location = str(row.get("location", ""))
 
         if selected_student_id and "fit_score" in row:
-            raw_score = float(row["fit_score"])
+            raw_score   = float(row["fit_score"])   # already ×100
+            grade, badge = _fit_score_to_grade(raw_score)
             score_label = "Match Score"
         else:
             raw = row.get("career_ops_score", 0)
@@ -454,15 +467,19 @@ else:
                 raw_score = float(raw) * 20 if pd.notna(raw) and raw != "" else 0
             except (ValueError, TypeError):
                 raw_score = 0
+            grade = str(row.get("career_ops_grade", "—"))
+            badge = {"A+": "🟢", "A": "🔵", "B+": "🟣", "B": "🟠"}.get(grade, "⚪")
             score_label = "Career Score"
 
         score_int = max(0, min(100, int(raw_score)))
 
-        col_info, col_score = st.columns([4, 1])
+        col_info, col_grade, col_score = st.columns([4, 1, 1])
         with col_info:
             st.markdown(f"**{title}**")
-            st.caption(f"{company}  ·  {location}  ·  Grade: {grade}")
+            st.caption(f"{company}  ·  {location}")
             st.markdown(f"[Apply Now ↗]({job_url})")
+        with col_grade:
+            st.metric("Grade", f"{badge} {grade}")
         with col_score:
             st.metric(score_label, f"{score_int}%")
         st.markdown("---")
