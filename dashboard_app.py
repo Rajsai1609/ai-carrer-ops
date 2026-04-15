@@ -452,18 +452,14 @@ def fetch_jobs_with_evals() -> pd.DataFrame:
 
 @st.cache_data(ttl=300)
 def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50) -> pd.DataFrame:
-    """Fetch personalized jobs for a student via PostgREST join on student_job_scores."""
+    """Fetch personalized jobs for a student via the student_top_jobs view."""
     client = get_client()
     if client is None:
         return pd.DataFrame()
     try:
         result = (
-            client.table("student_job_scores")
-            .select(
-                "fit_score, "
-                "jobs(id, url, company, title, location, career_ops_grade, "
-                "career_ops_score, visa_flag, evaluated_at)"
-            )
+            client.table("student_top_jobs")
+            .select("*")
             .eq("student_id", student_id)
             .gte("fit_score", min_score)
             .order("fit_score", desc=True)
@@ -476,8 +472,7 @@ def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50)
 
         flat: list[dict] = []
         for r in rows:
-            job = r.pop("jobs", None) or {}
-            flat.append({"fit_score": round(r["fit_score"] * 100, 1), **job})
+            flat.append({**r, "fit_score": round(r["fit_score"] * 100, 1)})
 
         return pd.DataFrame(flat)
     except Exception as exc:
