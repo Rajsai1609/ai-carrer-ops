@@ -208,7 +208,7 @@ def generate_resume(job_info: dict, base_resume: str) -> dict:
                 "job": {
                     "company": job_info.get("company", ""),
                     "title": job_info.get("title", ""),
-                    "description": job_info.get("description", ""),
+                    "job_description": job_info.get("description", ""),
                 }
             },
             timeout=120,
