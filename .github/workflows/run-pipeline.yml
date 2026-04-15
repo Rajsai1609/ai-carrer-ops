@@ -1,0 +1,42 @@
+name: Career-Ops Pipeline Sync
+
+on:
+  repository_dispatch:
+    types: [run-pipeline]   # triggered by scraper-2.0-agent after bridge writes pipeline.md
+  workflow_dispatch:        # allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout ai-carrer-ops
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install supabase python-dotenv
+
+      - name: Show pipeline.md stats
+        run: |
+          if [ -f data/pipeline.md ]; then
+            echo "pipeline.md URL count: $(grep -c . data/pipeline.md || echo 0)"
+            echo "First 5 URLs:"
+            head -5 data/pipeline.md
+          else
+            echo "WARNING: data/pipeline.md not found"
+          fi
+
+      - name: Run Supabase sync
+        # Syncs data/grades.tsv → Supabase jobs + evaluations tables.
+        # No-op if grades.tsv is absent or empty (handled gracefully in script).
+        # grades.tsv is user-layer data (gitignored); populate it locally via
+        # /career-ops pipeline then commit it, or run this step after evaluation.
+        run: python sync/supabase_sync.py
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
