@@ -186,9 +186,10 @@ def fetch_jobs_with_evals() -> pd.DataFrame:
         return pd.DataFrame()
 
 
-@st.cache_data(ttl=300)
+# @st.cache_data(ttl=300)  # disabled temporarily for debug
 def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50) -> pd.DataFrame:
     """Fetch personalized jobs for a student via the student_top_jobs view."""
+    st.write(f"DEBUG — Student ID: {student_id}")
     client = get_client()
     if client is None:
         return pd.DataFrame()
@@ -203,13 +204,19 @@ def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50)
             .execute()
         )
         rows = result.data or []
+        st.write(f"DEBUG — Raw rows from Supabase: {len(rows)}")
+        if rows:
+            st.write(f"DEBUG — Columns: {list(rows[0].keys())}")
+            st.write(f"DEBUG — Sample location values: {[r.get('location','') for r in rows[:5]]}")
         if not rows:
             return pd.DataFrame()
         flat = [{**r, "fit_score": round(r["fit_score"] * 100, 1)} for r in rows]
         df = pd.DataFrame(flat)
+        st.write(f"DEBUG — After fit_score scaling: {len(df)} rows")
         # Deduplicate by URL (keep highest fit_score per URL)
         if "url" in df.columns:
             df = df.sort_values("fit_score", ascending=False).drop_duplicates(subset="url")
+        st.write(f"DEBUG — After dedup: {len(df)} rows")
         # Filter USA jobs (loose — includes Remote/Anywhere and common state suffixes)
         if "location" in df.columns:
             _USA = (
@@ -220,6 +227,7 @@ def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 50)
                 df["location"].str.contains(_USA, case=False, na=False)
                 | df["location"].isna()
             ]
+        st.write(f"DEBUG — After USA filter: {len(df)} rows")
         return df
     except Exception as exc:
         st.warning(f"Could not load student jobs: {exc}")
@@ -286,9 +294,14 @@ def fetch_metrics() -> dict[str, int]:
 # ── Resolve student_id from name (now that fetchers are defined) ──────────────
 if chosen != "All Students":
     students_data = fetch_students()
+    st.write(f"DEBUG — Chosen name: {chosen!r}")
+    st.write(f"DEBUG — Students from Supabase: {[s['name'] for s in students_data]}")
     match = next((s for s in students_data if s["name"] == chosen), None)
     if match:
         selected_student_id = match["id"]
+        st.write(f"DEBUG — Resolved student_id: {selected_student_id}")
+    else:
+        st.warning(f"DEBUG — No match found for {chosen!r} in Supabase students table")
 
 
 # ── Header ────────────────────────────────────────────────────────────────────
