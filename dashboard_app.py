@@ -1,156 +1,100 @@
 """
-MCT PathAI — Multi-Student Job Intelligence Dashboard (step4)
-Extends the single-student view with a per-student score selector backed
-by Supabase (MCT-Alesia).
-
-Run:
-    cd scraper-2.0
-    streamlit run dashboard/app.py
-
-Streamlit Cloud secrets required:
-    GOOGLE_CREDENTIALS_JSON   — raw service-account JSON string
-    SUPABASE_URL              — https://xxxx.supabase.co
-    SUPABASE_ANON_KEY         — anon/public key (read-only RLS)
+MCT PathAI — Job Intelligence Pipeline Dashboard
+Powered by MCTechnology LLC
 """
+
 from __future__ import annotations
 
-import json
 import os
-from functools import lru_cache
+import json
 
 import pandas as pd
+import requests
 import streamlit as st
 from dotenv import load_dotenv
+from supabase import Client, create_client
 
-from dashboard.components.job_card import render_all_cards
-from dashboard.components.sidebar import render_sidebar
-from dashboard.components.stats_bar import render_stats
-from dashboard.sheets_reader import load_jobs
-
+# ── Config ──────────────────────────────────────────────────────────────────
 load_dotenv()
 
-# ---------------------------------------------------------------------------
-# Page config
-# ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="MCT PathAI",
+    page_title="MCT PathAI — Job Intelligence",
     page_icon="🎯",
     layout="wide",
-    initial_sidebar_state="collapsed",
-    menu_items={
-        "Get Help": None,
-        "Report a bug": None,
-        "About": (
-            "MCT PathAI — Job Intelligence for "
-            "F1/OPT students. Built by Rajsai Naredla "
-            "· MCTechnology LLC · Seattle, WA"
-        ),
-    },
 )
 
-# ---------------------------------------------------------------------------
-# Global CSS  (identical to original dashboard)
-# ---------------------------------------------------------------------------
-st.markdown("""
-<style>
-.stApp { background-color: #0D1117 !important; }
-.main .block-container {
-    background-color: #0D1117 !important;
-    padding: 1rem !important;
-    max-width: 100% !important;
-    overflow-x: hidden !important;
+# ── Constants ────────────────────────────────────────────────────────────────
+GRADE_ORDER = ["A+", "A", "B+", "B", "C+", "C", "D", "F"]
+
+GRADE_COLORS: dict[str, str] = {
+    "A+": "background-color: #d4edda; color: #155724;",
+    "A":  "background-color: #d4edda; color: #155724;",
+    "B+": "background-color: #cce5ff; color: #004085;",
+    "B":  "background-color: #cce5ff; color: #004085;",
+    "C+": "background-color: #e2e3e5; color: #383d41;",
+    "C":  "background-color: #e2e3e5; color: #383d41;",
+    "D":  "background-color: #e2e3e5; color: #383d41;",
+    "F":  "background-color: #e2e3e5; color: #383d41;",
 }
-div[data-testid="stVerticalBlock"]              { background-color: #0D1117 !important; }
-div[data-testid="stVerticalBlockBorderWrapper"] { background-color: #0D1117 !important; border: none !important; }
-div[data-testid="column"]                       { background-color: #0D1117 !important; }
-div[data-testid="stExpander"]       { background-color: #161B22 !important; border: 0.5px solid #30363D !important; border-radius: 8px !important; }
-div[data-testid="stExpanderDetails"] { background-color: #161B22 !important; }
-div[class*="stVerticalBlock"] > div { background-color: #0D1117 !important; }
-.stButton > button { background-color: #238636 !important; color: #ffffff !important; border: none !important; border-radius: 6px !important; width: 100% !important; }
-.stButton > button:hover { background-color: #2EA043 !important; }
-div[data-testid="stSelectbox"] > div { background-color: #161B22 !important; border: 0.5px solid #30363D !important; color: #E6EDF3 !important; }
-div[data-testid="stTextInput"] > div { background-color: #161B22 !important; border: 0.5px solid #30363D !important; }
-input { background-color: #161B22 !important; color: #E6EDF3 !important; }
-.stMultiSelect > div > div { background-color: #0D1117; border: 0.5px solid #30363D; }
-.stNumberInput > div > div > input { background-color: #0D1117; border: 0.5px solid #30363D; color: #C9D1D9; }
-section[data-testid="stSidebar"] { background-color: #161B22 !important; border-right: 0.5px solid #30363D !important; }
-section[data-testid="stSidebar"] > div { background-color: #161B22 !important; }
-p, span, label, div { color: #E6EDF3; }
-hr { border-color: #30363D !important; }
-div[data-testid="metric-container"] { background-color: #161B22 !important; border: 0.5px solid #30363D !important; border-radius: 8px !important; padding: 12px 16px; }
-* { scrollbar-color: #30363D #0D1117 !important; }
-::-webkit-scrollbar { width: 8px; }
-::-webkit-scrollbar-track { background: #0D1117; }
-::-webkit-scrollbar-thumb { background: #30363D; border-radius: 4px; }
-@media (max-width: 768px) {
-  .block-container { padding: 0.5rem 0.5rem !important; }
-  h1 { font-size: 18px !important; }
-  h2 { font-size: 16px !important; }
-  .stButton > button { padding: 10px !important; font-size: 14px !important; }
-}
-.stMarkdown > div { background: #0D1117 !important; }
-iframe { background: #0D1117 !important; }
-.element-container { background: #0D1117 !important; }
-.stHtml { background: #0D1117 !important; }
-[data-testid="stHtml"] { background: #0D1117 !important; }
-img { max-width: 100% !important; }
-</style>
-""", unsafe_allow_html=True)
 
-# ---------------------------------------------------------------------------
-# Header
-# ---------------------------------------------------------------------------
-st.markdown(
-    '<h1 style="color:#E6EDF3;margin-bottom:2px;">🎯 MCT <span style="color:#58A6FF;">PathAI</span> — Job Intelligence</h1>',
-    unsafe_allow_html=True,
-)
-st.markdown(
-    '<p style="color:#484F58;font-size:13px;margin-top:0;">Live data from Google Sheets · auto-refreshes every 5 minutes</p>',
-    unsafe_allow_html=True,
-)
-
-# ---------------------------------------------------------------------------
-# Supabase helpers
-# ---------------------------------------------------------------------------
-
-_SUPABASE_URL = os.getenv("SUPABASE_URL", "")
-_SUPABASE_KEY = os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_KEY", "")
+DISPLAY_COLS = [
+    "company",
+    "title",
+    "career_ops_grade",
+    "career_ops_score",
+    "scraper_score",
+    "evaluated_at",
+]
 
 
-def _supabase_available() -> bool:
-    return bool(_SUPABASE_URL and _SUPABASE_KEY)
+# ── Supabase client ──────────────────────────────────────────────────────────
+def get_client() -> Client | None:
+    url = ""
+    key = ""
+    # Try Streamlit secrets first
+    try:
+        url = st.secrets.get("SUPABASE_URL", "")
+        key = st.secrets.get("SUPABASE_KEY", "")
+    except Exception:
+        pass
+    # Fallback to environment
+    if not url:
+        url = os.environ.get("SUPABASE_URL", "")
+    if not key:
+        key = os.environ.get("SUPABASE_KEY", "")
+
+    if not url or not key:
+        st.error(
+            "**Supabase credentials not found.**\n\n"
+            "Please set `SUPABASE_URL` and `SUPABASE_KEY` in your `.env` file "
+            "or in `.streamlit/secrets.toml`."
+        )
+        return None
+
+    return create_client(url, key)
 
 
-@st.cache_resource(show_spinner=False)
-def _get_supabase_client():
-    from supabase import create_client  # type: ignore[import]
-    return create_client(_SUPABASE_URL, _SUPABASE_KEY)
-
-
-@st.cache_data(ttl=300, show_spinner="Loading students from Supabase…")
-def load_students() -> list[dict]:
-    """Return [{id, name}, …] from Supabase students table."""
-    if not _supabase_available():
+# ── Student selector helpers ───────────────────────────────────────────────
+@st.cache_data(ttl=300)
+def fetch_students() -> list[dict]:
+    """Load students from Supabase."""
+    client = get_client()
+    if client is None:
         return []
     try:
-        client = _get_supabase_client()
         result = client.table("students").select("id, name").order("name").execute()
         return result.data or []
-    except Exception as exc:
-        st.warning(f"Could not load students from Supabase: {exc}")
+    except Exception:
         return []
 
 
-@st.cache_data(ttl=300, show_spinner="Loading scores from Supabase…")
-def load_student_scores(student_id: str) -> dict[str, float]:
-    """
-    Return {job_id: fit_score} for the given student.
-    fit_score is in [0, 1]; the dashboard multiplies by 100 for display.
-    """
-    if not _supabase_available():
+@st.cache_data(ttl=300)
+def fetch_student_scores(student_id: str) -> dict[str, float]:
+    """Load per-student job scores from Supabase."""
+    client = get_client()
+    if client is None:
         return {}
     try:
-        client = _get_supabase_client()
         result = (
             client.table("student_job_scores")
             .select("job_id, fit_score")
@@ -158,328 +102,479 @@ def load_student_scores(student_id: str) -> dict[str, float]:
             .execute()
         )
         return {row["job_id"]: row["fit_score"] for row in (result.data or [])}
-    except Exception as exc:
-        st.warning(f"Could not load scores for student: {exc}")
+    except Exception:
         return {}
 
 
-def _apply_student_scores(df: pd.DataFrame, scores: dict[str, float]) -> pd.DataFrame:
-    """
-    Merge Supabase per-student scores into the DataFrame.
-    Scores are in [0,1]; multiply by 100 to match the 0–100 display range
-    expected by job_card.py and stats_bar.py.
-    """
-    if not scores:
-        return df
-    score_series = df["id"].map(scores)          # NaN for unscored jobs
-    df = df.copy()
-    df["fit_score"] = (score_series * 100).round(0)
-    return df
+# ── Cached queries ───────────────────────────────────────────────────────────
+@st.cache_data(ttl=1800)
+def fetch_jobs_with_evals() -> pd.DataFrame:
+    client = get_client()
+    if client is None:
+        return pd.DataFrame()
+
+    try:
+        result = (
+            client.table("jobs")
+            .select(
+                "id, url, company, title, career_ops_grade, career_ops_score, "
+                "scraper_score, evaluated_at, visa_flag, "
+                "evaluations(final_score, report_markdown)"
+            )
+            .execute()
+        )
+        rows = result.data or []
+
+        # Flatten nested evaluations (take first eval per job)
+        flat: list[dict] = []
+        for r in rows:
+            evals = r.pop("evaluations", None) or []
+            first_eval = evals[0] if evals else {}
+            flat.append({**r, **first_eval})
+
+        return pd.DataFrame(flat)
+
+    except Exception as exc:
+        st.warning(f"Could not load jobs: {exc}")
+        return pd.DataFrame()
 
 
-def _scale_fit_score(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Normalise fit_score to [0, 100] for display.
-    Google Sheets stores scores as [0, 1] floats; job_card.py expects integers
-    in [0, 100] for the coloured score circle.
-    """
-    if "fit_score" not in df.columns:
-        return df
-    max_val = df["fit_score"].dropna().max()
-    if max_val is not None and max_val <= 1.0:
-        df = df.copy()
-        df["fit_score"] = (df["fit_score"] * 100).round(0)
-    return df
+@st.cache_data(ttl=1800)
+def fetch_metrics() -> dict[str, int]:
+    client = get_client()
+    if client is None:
+        return {}
+
+    metrics: dict[str, int] = {}
+
+    try:
+        res = client.table("jobs").select("id", count="exact").execute()
+        metrics["total_jobs"] = res.count or 0
+    except Exception as exc:
+        st.warning(f"Metrics (total jobs): {exc}")
+        metrics["total_jobs"] = 0
+
+    try:
+        res = (
+            client.table("jobs")
+            .select("id", count="exact")
+            .not_.is_("career_ops_grade", "null")
+            .execute()
+        )
+        metrics["total_evaluated"] = res.count or 0
+    except Exception as exc:
+        st.warning(f"Metrics (evaluated): {exc}")
+        metrics["total_evaluated"] = 0
+
+    try:
+        res = (
+            client.table("jobs")
+            .select("id", count="exact")
+            .in_("career_ops_grade", ["A+", "A"])
+            .execute()
+        )
+        metrics["top_matches"] = res.count or 0
+    except Exception as exc:
+        st.warning(f"Metrics (top matches): {exc}")
+        metrics["top_matches"] = 0
+
+    try:
+        res = (
+            client.table("resumes")
+            .select("id", count="exact")
+            .eq("status", "generated")
+            .execute()
+        )
+        metrics["resumes_generated"] = res.count or 0
+    except Exception as exc:
+        # resumes table may not exist yet
+        metrics["resumes_generated"] = 0
+
+    return metrics
 
 
-# ---------------------------------------------------------------------------
-# Load base job data from Google Sheets
-# ---------------------------------------------------------------------------
-try:
-    df = load_jobs()
-except Exception as exc:
-    st.error(f"**Could not connect to Google Sheets:** {exc}")
-    st.info(
-        "Set `GOOGLE_CREDENTIALS_PATH` (path to service-account JSON) or "
-        "`GOOGLE_CREDENTIALS_JSON` (raw JSON string) in your environment, "
-        "then restart the app."
-    )
-    st.stop()
+@st.cache_data(ttl=1800)
+def fetch_resumes() -> pd.DataFrame:
+    client = get_client()
+    if client is None:
+        return pd.DataFrame()
 
-if df.empty:
-    st.warning("No jobs in the sheet yet. Run the scraper to populate it.")
-    st.stop()
+    try:
+        result = (
+            client.table("resumes")
+            .select(
+                "id, match_score, status, generated_at, tailored_resume_md, "
+                "jobs(company, title)"
+            )
+            .eq("status", "generated")
+            .execute()
+        )
+        rows = result.data or []
 
-# Scale single-student fit_score from [0,1] to [0,100] for correct display
-df = _scale_fit_score(df)
+        flat: list[dict] = []
+        for r in rows:
+            job = r.pop("jobs", None) or {}
+            flat.append({**r, **job})
 
-# ---------------------------------------------------------------------------
-# Student selector (sidebar — above existing filters)
-# ---------------------------------------------------------------------------
-students = load_students()
+        return pd.DataFrame(flat)
+
+    except Exception as exc:
+        st.warning(f"Could not load resumes: {exc}")
+        return pd.DataFrame()
+
+
+# ── Resume generation ───────────────────────────────────────────────────────────────
+RESUME_AI_URL = os.environ.get(
+    "RESUME_AI_URL", "https://resume-agent-production-ea2e.up.railway.app"
+)
+
+
+def generate_resume(job_info: dict, base_resume: str) -> dict:
+    """Call ResumeAI API to generate a tailored resume."""
+    try:
+        # Try with correct field names from resume-agent API
+        payload = {
+            "base_resume": base_resume,
+            "company_name": job_info.get("company", ""),
+            "job_role": job_info.get("title", ""),
+            "job_description": job_info.get("description", ""),
+        }
+        st.write("Debug payload:", payload)
+        response = requests.post(
+            f"{RESUME_AI_URL}/api/tailor",
+            json=payload,
+            timeout=120,
+        )
+        if response.status_code == 200:
+            data = response.json()
+            tailored = data.get("tailored_resume") or data.get("resume") or ""
+            return {"success": True, "tailored_resume": tailored}
+        else:
+            return {"success": False, "error": f"API error: {response.status_code} - {response.text[:200]}"}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
+def save_resume_to_supabase(
+    job_id: str,
+    resume_md: str,
+    match_score: float = 0.0,
+) -> bool:
+    """Save generated resume to Supabase resumes table."""
+    client = get_client()
+    if client is None:
+        st.error("Supabase client is None - check credentials")
+        return False
+
+    # Allow saving without job_id (no foreign key constraint)
+    if not job_id:
+        st.warning("No job_id - saving resume without job reference")
+
+    try:
+        data = {
+            "tailored_resume_md": resume_md,
+            "match_score": match_score,
+            "status": "generated",
+        }
+        if job_id:
+            data["job_id"] = job_id
+        result = client.table("resumes").insert(data).execute()
+        return True
+    except Exception as exc:
+        st.error(f"Save failed: {exc}")
+        return False
+
+
+# ── Styling ──────────────────────────────────────────────────────────────────
+def _row_style(row: pd.Series) -> list[str]:
+    grade = str(row.get("career_ops_grade", ""))
+    css = GRADE_COLORS.get(grade, "")
+    return [css] * len(row)
+
+
+def style_dataframe(df: pd.DataFrame) -> pd.io.formats.style.Styler:
+    def _apply_style(row):
+        grade = str(row.get("career_ops_grade", ""))
+        return [GRADE_COLORS.get(grade, "")] * len(row)
+    return df.style.apply(_apply_style, axis=1)
+
+
+# ── Header ───────────────────────────────────────────────────────────────────
+st.title("🎯 MCT PathAI — Job Intelligence Pipeline")
+st.caption("Powered by MCTechnology LLC")
+st.divider()
+
+
+# ── Student selector ────────────────────────────────────────────────────────
+students = fetch_students()
 selected_student_id: str | None = None
 selected_student_name = "All students"
 
 if students:
     with st.sidebar:
-        st.markdown("""
-<div style="padding:8px 0 12px;border-bottom:0.5px solid #30363D;margin-bottom:12px;">
-  <div style="font-size:13px;font-weight:600;color:#58A6FF;">👤 Student View</div>
-  <div style="font-size:11px;color:#484F58;margin-top:2px;">Personalised scores from Supabase</div>
-</div>
-""", unsafe_allow_html=True)
-
+        st.markdown("---")
+        st.markdown("**👤 Student View**")
         student_options = ["All students"] + [s["name"] for s in students]
         chosen = st.selectbox(
-            "Score jobs as:",
+            "View jobs for:",
             options=student_options,
             index=0,
             key="student_selector",
-            label_visibility="collapsed",
         )
-
         if chosen != "All students":
             match = next((s for s in students if s["name"] == chosen), None)
             if match:
                 selected_student_id = match["id"]
-                selected_student_name = match["name"]
+                selected_student_name = chosen
 
-    # Overlay per-student scores when a student is chosen
-    if selected_student_id:
-        scores = load_student_scores(selected_student_id)
-        if scores:
-            df = _apply_student_scores(df, scores)
+# ── Load student scores if a student is selected ───────────────────────────
+student_scores: dict[str, float] = {}
+if selected_student_id:
+    student_scores = fetch_student_scores(selected_student_id)
+    if student_scores:
+        st.info(f"👤 Viewing jobs for **{selected_student_name}**")
+    else:
+        st.warning(f"No scores yet for {selected_student_name} — run step3_multi_scorer.py")
+
+
+# ── Metrics row ──────────────────────────────────────────────────────────────
+metrics = fetch_metrics()
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Total Jobs", metrics.get("total_jobs", 0))
+col2.metric("Evaluated", metrics.get("total_evaluated", 0))
+col3.metric("A / A+ Matches", metrics.get("top_matches", 0))
+col4.metric("Resumes Generated", metrics.get("resumes_generated", 0))
+
+st.divider()
+
+
+# ── Sidebar filters ──────────────────────────────────────────────────────────
+with st.sidebar:
+    st.header("Filters")
+
+    grade_filter: list[str] = st.multiselect(
+        "Grade Filter",
+        options=GRADE_ORDER,
+        default=["A+", "A"],
+    )
+
+    company_search: str = st.text_input("Search Company", "")
+
+    hide_visa_flagged: bool = st.checkbox("Hide visa-flagged jobs", value=True)
+
+    if st.button("Refresh Data"):
+        st.cache_data.clear()
+        st.rerun()
+
+    st.divider()
+    st.caption("Cache TTL: 30 min")
+
+
+# ── Load & filter data ───────────────────────────────────────────────────────
+df = fetch_jobs_with_evals()
+
+if df.empty:
+    st.info("No job data found. Run the sync pipeline to populate Supabase.")
+    st.stop()
+
+# Apply student score filter if a student is selected
+if selected_student_id and student_scores:
+    # Add fit_score column based on student scores (scale from 0-1 to 0-100)
+    df = df.copy()
+    df["fit_score"] = df["id"].map(lambda x: (student_scores.get(x, 0) * 100))
+    # Filter to only jobs with scores and sort by score descending
+    df = df[df["id"].isin(student_scores.keys())]
+    df = df.sort_values("fit_score", ascending=False)
+    # Add fit_score to display columns
+    if "fit_score" not in DISPLAY_COLS:
+        DISPLAY_COLS.insert(0, "fit_score")
+
+# Apply grade filter
+if grade_filter:
+    df = df[df["career_ops_grade"].isin(grade_filter)]
+
+# Apply company search
+if company_search:
+    mask = df["company"].str.contains(company_search, case=False, na=False)
+    df = df[mask]
+
+# Hide visa-flagged
+if hide_visa_flagged and "visa_flag" in df.columns:
+    df = df[df["visa_flag"].ne(True)]
+
+
+# ── Main jobs table ──────────────────────────────────────────────────────────
+st.subheader(f"Jobs ({len(df)} results)")
+
+display_cols = [c for c in DISPLAY_COLS if c in df.columns]
+display_df = df[display_cols].copy()
+
+# Format score columns
+for col in ("career_ops_score", "scraper_score", "final_score"):
+    if col in display_df.columns:
+        display_df[col] = display_df[col].apply(
+            lambda v: f"{float(v):.2f}" if pd.notna(v) and v != "" else ""
+        )
+
+st.dataframe(
+    style_dataframe(display_df),
+    use_container_width=True,
+    hide_index=True,
+)
+
+
+# ── Generate Resume ──────────────────────────────────────────────────────────
+st.divider()
+st.subheader("Generate Tailored Resume")
+
+# Load base resume from GitHub API (scraper-2.0-agent repo)
+@st.cache_data(ttl=3600)
+def fetch_base_resume() -> str:
+    """Fetch base resume from scraper-2.0-agent repo."""
+    gh_pat = ""
+    # Try Streamlit secrets first, then environment
+    try:
+        gh_pat = st.secrets.get("GH_PAT", "")
+    except Exception:
+        pass
+    if not gh_pat:
+        gh_pat = os.environ.get("GH_PAT", "")
+    if not gh_pat:
+        st.warning("GH_PAT not configured in Streamlit secrets or environment")
+        return ""
+    try:
+        url = "https://raw.githubusercontent.com/Rajsai1609/scraper-2.0-agent/main/data/resume.txt"
+        headers = {"Authorization": f"token {gh_pat}"}
+        r = requests.get(url, headers=headers, timeout=10)
+        if r.status_code == 200:
+            return r.text
+        elif r.status_code == 401:
+            st.error("GH_PAT authentication failed. Check your token.")
         else:
-            st.sidebar.info("No scores yet for this student — run step3_multi_scorer.py.")
-else:
-    # Supabase not configured or no students yet — silent degradation
-    pass
+            st.warning(f"Failed to fetch resume: {r.status_code}")
+    except Exception as exc:
+        st.warning(f"Error fetching resume: {exc}")
+    return ""
 
-# ---------------------------------------------------------------------------
-# Sidebar filters (render_sidebar unchanged from original)
-# ---------------------------------------------------------------------------
-filters = render_sidebar(df)
+base_resume = fetch_base_resume()
 
-# ---------------------------------------------------------------------------
-# Apply filters
-# ---------------------------------------------------------------------------
-filtered = df.copy()
+col_left, col_right = st.columns([2, 1])
 
-if "search" in filters:
-    q = filters["search"].lower()
-    mask = (
-        filtered["title"].str.lower().str.contains(q, na=False)
-        | filtered["company"].str.lower().str.contains(q, na=False)
+with col_left:
+    # Job selector for resume generation
+    job_options = df.apply(
+        lambda r: f"{r.get('company', '?')} — {r.get('title', '?')} ({r.get('career_ops_grade', '?')})",
+        axis=1,
+    ).tolist()
+    selected_job_for_resume = st.selectbox(
+        "Select job to tailor resume for:",
+        ["— select —"] + job_options,
+        key="resume_job_select",
     )
-    filtered = filtered[mask]
 
-if "work_mode" in filters:
-    filtered = filtered[filtered["work_mode"].isin(filters["work_mode"])]
+with col_right:
+    generate_btn = st.button(
+        "Generate Resume",
+        type="primary",
+        disabled=(selected_job_for_resume == "— select —" or not base_resume),
+    )
 
-if "experience_level" in filters:
-    filtered = filtered[filtered["experience_level"].isin(filters["experience_level"])]
+if selected_job_for_resume != "— select —" and base_resume:
+    idx = job_options.index(selected_job_for_resume)
+    job_row = df.iloc[idx]
+    # Use report_markdown if available, otherwise fall back to title/company
+    report = job_row.get("report_markdown", "") or job_row.get("title", "")
+    job_info = {
+        "company": job_row.get("company", ""),
+        "title": job_row.get("title", ""),
+        "description": (job_row.get("company", "") + " - " + job_row.get("title", ""))[:2000],
+    }
+    job_id = job_row.get("id", "")
+    # Debug: show what job_id we're getting
+    if not job_id:
+        st.warning(f"Job ID missing - will save without foreign key")
+    
+    if generate_btn:
+        with st.spinner("Generating tailored resume..."):
+            result = generate_resume(job_info, base_resume)
+            if result.get("success"):
+                tailored = result.get("tailored_resume", "")
+                if tailored and save_resume_to_supabase(job_id, tailored, job_row.get("career_ops_score", 0)):
+                    st.success("Resume generated and saved!")
+                    st.cache_data.clear()
+                    st.rerun()
+                else:
+                    st.error("Failed to save resume to database")
+            else:
+                st.error(f"Generation failed: {result.get('error', 'Unknown error')}")
+    else:
+        st.info("Select a job above and click 'Generate Resume' to create a tailored resume.")
+elif not base_resume:
+    st.warning("Base resume not found. Please ensure data/resume.txt exists in scraper-2.0-agent.")
 
-if "job_category" in filters:
-    filtered = filtered[filtered["job_category"].isin(filters["job_category"])]
 
-if "usa_region" in filters:
-    filtered = filtered[filtered["usa_region"].isin(filters["usa_region"])]
+# ── Job detail expander ──────────────────────────────────────────────────────
+st.divider()
+st.subheader("Job Detail")
 
-if filters.get("h1b_sponsor"):
-    filtered = filtered[filtered["h1b_sponsor"] == True]
+if "report_markdown" in df.columns and not df.empty:
+    # Build label list: "Company — Title (Grade)"
+    labels = df.apply(
+        lambda r: f"{r.get('company', '?')} — {r.get('title', '?')} "
+                  f"({r.get('career_ops_grade', '?')})",
+        axis=1,
+    ).tolist()
 
-if filters.get("opt_friendly"):
-    filtered = filtered[filtered["opt_friendly"] == True]
+    selected_label = st.selectbox("View full report for job:", ["— select —"] + labels)
 
-if filters.get("stem_opt_eligible"):
-    filtered = filtered[filtered["stem_opt_eligible"] == True]
+    if selected_label and selected_label != "— select —":
+        idx = labels.index(selected_label)
+        row = df.iloc[idx]
+        report_md = row.get("report_markdown", "")
 
-if filters.get("is_entry_eligible"):
-    filtered = filtered[filtered["is_entry_eligible"] == True]
+        if report_md:
+            with st.expander("Full Evaluation Report", expanded=True):
+                st.markdown(report_md)
+        else:
+            st.info("No report markdown available for this job.")
+else:
+    st.info("Select grades that include evaluated jobs to see reports.")
 
-if "max_years" in filters:
-    mx = filters["max_years"]
-    filtered = filtered[filtered["years_min"].isna() | (filtered["years_min"] <= mx)]
 
-if "min_score" in filters:
-    filtered = filtered[
-        filtered["fit_score"].notna() & (filtered["fit_score"] >= filters["min_score"])
+# ── Resumes section ──────────────────────────────────────────────────────────
+st.divider()
+st.subheader("Generated Resumes")
+
+resumes_df = fetch_resumes()
+
+if resumes_df.empty:
+    st.info("No generated resumes found.")
+else:
+    resume_display_cols = [
+        c for c in ["company", "title", "match_score", "status", "generated_at"]
+        if c in resumes_df.columns
     ]
-
-# Newest first, then by score descending for student-specific views
-if selected_student_id:
-    filtered = filtered.sort_values("fit_score", ascending=False, na_position="last")
-else:
-    filtered = filtered.sort_values(
-        ["date_posted", "fetched_at"], ascending=False, na_position="last"
-    )
-filtered = filtered.reset_index(drop=True)
-
-# ---------------------------------------------------------------------------
-# Founder story (identical to original)
-# ---------------------------------------------------------------------------
-with st.expander("👤 About the builder", expanded=False):
-    st.html("""
-<div style="background:#161B22;border:0.5px solid #30363D;border-radius:12px;padding:28px 32px;">
-  <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px;">
-    <div style="width:64px;height:64px;border-radius:50%;flex-shrink:0;
-                background:linear-gradient(135deg,#1F6FEB,#238636);
-                display:flex;align-items:center;justify-content:center;
-                font-size:22px;font-weight:700;color:#ffffff;letter-spacing:1px;">RS</div>
-    <div>
-      <div style="color:#E6EDF3;font-size:20px;font-weight:700;line-height:1.2;">Rajsai Naredla</div>
-      <div style="color:#8B949E;font-size:13px;margin-top:3px;">AI Automation Engineer &amp; AI Architect</div>
-      <div style="color:#8B949E;font-size:13px;">MCTechnology LLC · Seattle, WA</div>
-      <div style="margin-top:8px;">
-        <span style="background:#0D419D;color:#58A6FF;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:500;">
-          Indian immigrant · F1/OPT survivor
-        </span>
-      </div>
-    </div>
-  </div>
-  <div style="border-left:3px solid #30363D;padding-left:16px;margin-bottom:24px;">
-    <p style="color:#C9D1D9;font-size:14px;line-height:1.75;margin:0;font-style:italic;">
-      "I came to the US as an international student.<br>
-      I spent months manually checking company career<br>
-      pages one by one — searching for H1B sponsors,<br>
-      verifying STEM OPT eligibility, worrying about<br>
-      the 60-day grace period. LinkedIn had no visa<br>
-      filter. Indeed's data was wrong. No tool existed<br>
-      that understood what I was going through.<br>
-      So I built one."
-    </p>
-  </div>
-  <div style="border-top:0.5px solid #30363D;padding-top:14px;color:#484F58;font-size:12px;">
-    Built by an immigrant who lived this problem ·
-    <a href="https://www.linkedin.com/in/rajsainaredla09" target="_blank"
-       style="color:#58A6FF;text-decoration:none;">linkedin.com/in/rajsainaredla09</a>
-    · MCTechnology LLC · Seattle, WA
-  </div>
-</div>
-""")
-
-# ---------------------------------------------------------------------------
-# "How this works" toggle (identical to original)
-# ---------------------------------------------------------------------------
-if "show_why" not in st.session_state:
-    st.session_state.show_why = False
-
-_why_label = "How this works ▲" if st.session_state.show_why else "How this works ▼"
-if st.button(_why_label, key="toggle_why"):
-    st.session_state.show_why = not st.session_state.show_why
-    st.rerun()
-
-if st.session_state.show_why:
-    st.html("""
-<div style="background:#161B22;border:0.5px solid #30363D;border-radius:12px;padding:28px 32px;margin-top:4px;">
-  <div style="color:#E6EDF3;font-size:20px;font-weight:700;">How this tool gets you jobs</div>
-  <div style="color:#8B949E;font-size:13px;margin-top:4px;">No tech talk. Just what this does for you every single day.</div>
-  <hr style="border-color:#30363D;margin:18px 0;">
-  <div style="display:flex;gap:12px;margin-bottom:28px;">
-    <div style="flex:1;background:#0D1117;border:0.5px solid #30363D;border-radius:8px;padding:18px 16px;">
-      <div style="color:#484F58;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Step 1 — Every morning</div>
-      <div style="color:#58A6FF;font-size:14px;font-weight:600;margin-bottom:8px;">Fresh jobs land in your feed</div>
-      <div style="color:#8B949E;font-size:13px;line-height:1.6;">Every day at 7AM this tool visits the career pages of 20+ top companies and pulls their latest job openings.</div>
-    </div>
-    <div style="flex:1;background:#0D1117;border:0.5px solid #30363D;border-radius:8px;padding:18px 16px;">
-      <div style="color:#484F58;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Step 2 — Instantly filtered</div>
-      <div style="color:#3FB950;font-size:14px;font-weight:600;margin-bottom:8px;">Only jobs that work for your visa</div>
-      <div style="color:#8B949E;font-size:13px;line-height:1.6;">Every job is checked for H1B sponsorship, OPT eligibility, and STEM OPT status automatically.</div>
-    </div>
-    <div style="flex:1;background:#0D1117;border:0.5px solid #30363D;border-radius:8px;padding:18px 16px;">
-      <div style="color:#484F58;font-size:10px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Step 3 — Ranked for you</div>
-      <div style="color:#FFA657;font-size:14px;font-weight:600;margin-bottom:8px;">Best matches shown first</div>
-      <div style="color:#8B949E;font-size:13px;line-height:1.6;">Your resume is compared against every job using AI. Jobs matching your skills are shown at the top.</div>
-    </div>
-  </div>
-  <div style="border:1px solid #1F6FEB;border-radius:8px;padding:16px 20px;display:flex;gap:14px;align-items:flex-start;">
-    <div style="width:10px;height:10px;border-radius:50%;background:#3FB950;flex-shrink:0;margin-top:4px;"></div>
-    <div style="color:#C9D1D9;font-size:13px;line-height:1.75;">
-      Zero ads. Zero sponsored listings. Every job passed through a real visa filter, a real experience
-      check, and a real resume match. Built by an immigrant who needed this and could not find it anywhere.
-    </div>
-  </div>
-</div>
-""")
-
-st.markdown('<hr style="border-color:#30363D;margin:20px 0 16px;">', unsafe_allow_html=True)
-
-# ---------------------------------------------------------------------------
-# Student context banner (when student selected)
-# ---------------------------------------------------------------------------
-if selected_student_id:
-    top_score = filtered["fit_score"].dropna().max() if not filtered.empty else None
-    top_str = f"Top match: **{int(top_score)}**" if top_score else "No scores yet"
-    st.markdown(
-        f'<div style="background:#0D419D22;border:0.5px solid #1F6FEB;border-radius:8px;'
-        f'padding:10px 16px;margin-bottom:12px;font-size:13px;color:#58A6FF;">'
-        f'👤 Showing scores for <strong>{selected_student_name}</strong>  ·  {top_str}'
-        f'</div>',
-        unsafe_allow_html=True,
+    st.dataframe(
+        resumes_df[resume_display_cols],
+        use_container_width=True,
+        hide_index=True,
     )
 
-# ---------------------------------------------------------------------------
-# Stats row
-# ---------------------------------------------------------------------------
-render_stats(filtered)
-st.markdown('<hr style="border-color:#30363D;margin:16px 0;">', unsafe_allow_html=True)
+    # Download buttons
+    for _, r in resumes_df.iterrows():
+        resume_md = r.get("tailored_resume_md", "")
+        if not resume_md:
+            continue
 
-# ---------------------------------------------------------------------------
-# Result count
-# ---------------------------------------------------------------------------
-total_all      = len(df)
-total_filtered = len(filtered)
+        company = r.get("company", "company")
+        title = r.get("title", "role")
+        filename = f"resume_{company}_{title}.md".replace(" ", "_").lower()
 
-if total_filtered == total_all:
-    st.markdown(
-        f'<p style="color:#8B949E;font-size:13px;">Showing <strong style="color:#E6EDF3;">{total_filtered}</strong> jobs</p>',
-        unsafe_allow_html=True,
-    )
-else:
-    st.markdown(
-        f'<p style="color:#8B949E;font-size:13px;">Showing <strong style="color:#E6EDF3;">{total_filtered}</strong> of {total_all} jobs</p>',
-        unsafe_allow_html=True,
-    )
-
-# ---------------------------------------------------------------------------
-# Paginated job cards
-# ---------------------------------------------------------------------------
-if filtered.empty:
-    st.info("No jobs match the current filters. Try broadening your search.")
-else:
-    PAGE_SIZE = 25
-    total_pages = max(1, (total_filtered + PAGE_SIZE - 1) // PAGE_SIZE)
-
-    if "page_idx" not in st.session_state:
-        st.session_state.page_idx = 0
-
-    if st.session_state.page_idx >= total_pages:
-        st.session_state.page_idx = 0
-
-    if total_pages > 1:
-        col_prev, col_info, col_next = st.columns([1, 3, 1])
-        with col_prev:
-            if st.button("← Previous", disabled=st.session_state.page_idx == 0):
-                st.session_state.page_idx -= 1
-                st.rerun()
-        with col_info:
-            st.markdown(
-                f'<p style="color:#8B949E;text-align:center;padding-top:6px;">Page {st.session_state.page_idx + 1} of {total_pages}</p>',
-                unsafe_allow_html=True,
-            )
-        with col_next:
-            if st.button("Next →", disabled=st.session_state.page_idx >= total_pages - 1):
-                st.session_state.page_idx += 1
-                st.rerun()
-
-    page_idx = st.session_state.page_idx
-    start    = page_idx * PAGE_SIZE
-    page_df  = filtered.iloc[start : start + PAGE_SIZE]
-
-    render_all_cards(page_df)
-
-    if total_pages > 1:
-        st.markdown(
-            f'<p style="color:#8B949E;font-size:12px;text-align:center;">Page {page_idx + 1} of {total_pages} · {total_filtered} results</p>',
-            unsafe_allow_html=True,
+        st.download_button(
+            label=f"Download resume — {company} ({title})",
+            data=resume_md,
+            file_name=filename,
+            mime="text/markdown",
+            key=f"dl_{r.get('id', filename)}",
         )
