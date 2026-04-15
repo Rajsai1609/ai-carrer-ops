@@ -50,9 +50,11 @@ html, body,
     max-width: 280px !important;
 }
 [data-testid="collapsedControl"] { display: none !important; }
-[data-testid="stSidebar"] .stMarkdown p,
 [data-testid="stSidebar"] label,
-[data-testid="stSidebar"] .stSelectbox label { color: #94a3b8 !important; }
+[data-testid="stSidebar"] .stSelectbox label,
+[data-testid="stSidebar"] .stCheckbox label span { color: #94a3b8 !important; }
+[data-testid="stSidebar"] .sidebar-section { color: #94a3b8 !important; }
+[data-testid="stSidebar"] .sidebar-footer { color: #475569 !important; }
 
 /* Sidebar inputs */
 [data-testid="stSidebar"] .stTextInput input,
@@ -354,8 +356,19 @@ html, body,
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
+    color: #94a3b8;
+    margin: 20px 0 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid rgba(148,163,184,0.1);
+}
+.sidebar-footer {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(148,163,184,0.08);
+    font-size: 0.65rem;
     color: #475569;
-    margin: 20px 0 10px;
+    text-align: center;
+    line-height: 1.7;
 }
 
 /* ── Caption ── */
@@ -575,8 +588,7 @@ with st.sidebar:
         st.rerun()
 
     st.markdown("""
-    <div style="position:absolute; bottom:24px; left:0; right:0; padding:0 16px;
-                font-size:0.65rem; color:#334155; text-align:center; line-height:1.6;">
+    <div class="sidebar-footer">
         MCTechnology LLC · AI Automation<br>Cache refreshes every 30 min
     </div>
     """, unsafe_allow_html=True)
