@@ -56,6 +56,28 @@ section[data-testid="stSidebar"] * {
 </style>
 """, unsafe_allow_html=True)
 
+# ── Sidebar helpers (must be defined before sidebar renders) ──────────────────
+@st.cache_data(ttl=300)
+def _sidebar_student_names() -> list[str]:
+    """Fetch student names for sidebar dropdown. Cached 5 min."""
+    _url = _key = ""
+    try:
+        _url = st.secrets.get("SUPABASE_URL", "")
+        _key = st.secrets.get("SUPABASE_KEY", "")
+    except Exception:
+        pass
+    _url = _url or os.environ.get("SUPABASE_URL", "")
+    _key = _key or os.environ.get("SUPABASE_KEY", "")
+    if not _url or not _key:
+        return []
+    try:
+        _c = create_client(_url, _key)
+        _r = _c.table("students").select("name").order("name").execute()
+        return [row["name"] for row in (_r.data or [])]
+    except Exception:
+        return []
+
+
 # ── Sidebar ────────────────────────────────────────────────────────────────────
 selected_student_id: str | None = None
 selected_student_name: str = "All Students"
@@ -63,17 +85,11 @@ selected_student_name: str = "All Students"
 with st.sidebar:
     st.markdown("### 👤 Student View")
 
-    _STUDENT_NAMES = [
-        "All Students",
-        "Akhila",
-        "M Pavan",
-        "Sucharan",
-        "Unnatha Bi",
-        "Vinit",
-    ]
+    _dynamic_names = _sidebar_student_names()
+    _student_options = ["All Students"] + _dynamic_names
 
     st.markdown("**View jobs for:**")
-    chosen = st.selectbox("", options=_STUDENT_NAMES, key="student_select")
+    chosen = st.selectbox("", options=_student_options, key="student_select")
     selected_student_name = chosen if chosen != "All Students" else "All Students"
 
     st.markdown("---")
