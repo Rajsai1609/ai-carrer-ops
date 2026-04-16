@@ -1,6 +1,11 @@
 """
 MCT PathAI — Job Intelligence Dashboard
 Powered by MCTechnology LLC
+
+Data sources:
+  scraped_jobs      — raw jobs from scraper-2.0 (Supabase)
+  student_job_scores — per-student fit scores (Supabase)
+  students          — student profiles (Supabase)
 """
 
 from __future__ import annotations
@@ -51,7 +56,7 @@ section[data-testid="stSidebar"] * {
 </style>
 """, unsafe_allow_html=True)
 
-# ── Sidebar (must be first after set_page_config) ────────────────────────────
+# ── Sidebar ────────────────────────────────────────────────────────────────────
 selected_student_id: str | None = None
 selected_student_name: str = "All Students"
 
@@ -69,14 +74,13 @@ with st.sidebar:
 
     st.markdown("**View jobs for:**")
     chosen = st.selectbox("", options=_STUDENT_NAMES, key="student_select")
-    # Note: hardcoded names for sidebar test — real IDs fetched below
     selected_student_name = chosen if chosen != "All Students" else "All Students"
 
     st.markdown("---")
     st.markdown("### 🔍 Filters")
 
     grade_filter: list[str] = st.multiselect(
-        "Grade Filter",
+        "Score Filter",
         options=["A+", "A", "B+", "B", "C+", "C", "D", "F"],
         default=["A+", "A"],
     )
@@ -108,18 +112,33 @@ GRADE_PALETTE: dict[str, str] = {
     "D":  "#f97316", "F":  "#ef4444",
 }
 
-_LOGO_GRADIENTS = [
-    "linear-gradient(135deg,#7c3aed,#4f46e5)",
-    "linear-gradient(135deg,#2563eb,#0284c7)",
-    "linear-gradient(135deg,#16a34a,#0d9488)",
-    "linear-gradient(135deg,#ea580c,#dc2626)",
-    "linear-gradient(135deg,#d97706,#b45309)",
-    "linear-gradient(135deg,#db2777,#9333ea)",
+# scraper_score thresholds that map to letter grades
+_GRADE_THRESHOLDS: list[tuple[float, str]] = [
+    (0.70, "A+"),
+    (0.60, "A"),
+    (0.50, "B+"),
+    (0.40, "B"),
+    (0.30, "C+"),
+    (0.20, "C"),
+    (0.10, "D"),
+    (0.00, "F"),
 ]
 
 
-def _logo_gradient(company: str) -> str:
-    return _LOGO_GRADIENTS[ord(company[0].upper()) % len(_LOGO_GRADIENTS)]
+def _score_to_grade(score: float) -> str:
+    """Convert a scraper_score [0,1] to a letter grade."""
+    for threshold, grade in _GRADE_THRESHOLDS:
+        if score >= threshold:
+            return grade
+    return "F"
+
+
+def _fit_score_to_grade(score_pct: float) -> tuple[str, str]:
+    """Convert fit_score percentage [0,100] to (grade, badge_emoji)."""
+    _BADGE = {"A+": "🟢", "A": "🔵", "B+": "🟣", "B": "🟠"}
+    grade = _score_to_grade(score_pct / 100)
+    badge = _BADGE.get(grade, "⚪")
+    return grade, badge
 
 
 # ── Supabase client ───────────────────────────────────────────────────────────
@@ -154,63 +173,95 @@ def fetch_students() -> list[dict]:
 
 
 @st.cache_data(ttl=1800)
-def fetch_jobs_with_evals() -> pd.DataFrame:
+def fetch_scraped_jobs() -> pd.DataFrame:
+    """Fetch all jobs from the scraped_jobs table."""
     client = get_client()
     if client is None:
         return pd.DataFrame()
     try:
         result = (
-            client.table("jobs")
+            client.table("scraped_jobs")
             .select(
-                "id, url, company, title, career_ops_grade, career_ops_score, "
-                "scraper_score, evaluated_at, visa_flag, "
-                "evaluations(final_score, report_markdown)"
+                "id, url, company, title, location, scraper_score, "
+                "visa_flag, job_category, work_mode, experience_level, "
+                "h1b_sponsor, opt_friendly, is_entry_eligible, fetched_at"
             )
             .execute()
         )
         rows = result.data or []
-        flat: list[dict] = []
-        for r in rows:
-            evals = r.pop("evaluations", None) or []
-            first_eval = evals[0] if evals else {}
-            flat.append({**r, **first_eval})
-        df = pd.DataFrame(flat)
-        # Deduplicate by id (primary key), then by URL as a safety net
+        if not rows:
+            return pd.DataFrame()
+        df = pd.DataFrame(rows)
         if "id" in df.columns:
             df = df.drop_duplicates(subset="id")
         if "url" in df.columns:
             df = df.drop_duplicates(subset="url")
+        # Derive letter grade from scraper_score
+        if "scraper_score" in df.columns:
+            df["grade"] = df["scraper_score"].apply(
+                lambda v: _score_to_grade(float(v)) if pd.notna(v) else "F"
+            )
         return df
     except Exception as exc:
-        st.warning(f"Could not load jobs: {exc}")
+        st.warning(f"Could not load scraped jobs: {exc}")
         return pd.DataFrame()
 
 
 @st.cache_data(ttl=300)
 def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 500) -> pd.DataFrame:
-    """Fetch personalized jobs for a student via the student_top_jobs view."""
+    """
+    Fetch personalized jobs for a student.
+
+    1. Pull fit scores from student_job_scores (Supabase).
+    2. Fetch matching job details from scraped_jobs.
+    3. Merge and return.
+    """
     client = get_client()
     if client is None:
         return pd.DataFrame()
     try:
-        result = (
-            client.table("student_top_jobs")
-            .select("*")
+        # Step 1 — student scores
+        scores_res = (
+            client.table("student_job_scores")
+            .select("job_id, fit_score, skill_score, semantic_score")
             .eq("student_id", student_id)
             .gte("fit_score", min_score)
             .order("fit_score", desc=True)
             .limit(limit)
             .execute()
         )
-        rows = result.data or []
-        if not rows:
+        scores = scores_res.data or []
+        if not scores:
             return pd.DataFrame()
-        flat = [{**r, "fit_score": round(r["fit_score"] * 100, 1)} for r in rows]
-        df = pd.DataFrame(flat)
+
+        scores_df = pd.DataFrame(scores)
+        scores_df["fit_score"] = (scores_df["fit_score"] * 100).round(1)
+
+        # Step 2 — job details from scraped_jobs
+        job_ids = scores_df["job_id"].tolist()
+        jobs_res = (
+            client.table("scraped_jobs")
+            .select(
+                "id, url, company, title, location, visa_flag, "
+                "job_category, work_mode, scraper_score"
+            )
+            .in_("id", job_ids)
+            .execute()
+        )
+        jobs = jobs_res.data or []
+        if not jobs:
+            return pd.DataFrame()
+
+        jobs_df = pd.DataFrame(jobs)
+
+        # Step 3 — merge on job_id / id
+        df = scores_df.merge(jobs_df, left_on="job_id", right_on="id", how="inner")
+
         # Deduplicate by URL (keep highest fit_score per URL)
         if "url" in df.columns:
             df = df.sort_values("fit_score", ascending=False).drop_duplicates(subset="url")
-        # Filter USA jobs using full state names + common abbreviation suffixes
+
+        # USA filter — scraped_jobs already has is_usa_job; filter on location as fallback
         if "location" in df.columns:
             _USA_KEYWORDS = [
                 "United States", "USA", " US ",
@@ -234,11 +285,11 @@ def fetch_student_jobs(student_id: str, min_score: float = 0.4, limit: int = 500
                 df["location"].str.contains(_USA_PATTERN, case=False, na=False)
                 | df["location"].isna()
             ]
-        # Keep all jobs with fit_score >= 40% (grades B and above)
-        # fit_score is already ×100 at this point
-        if "fit_score" in df.columns:
-            df = df[df["fit_score"] >= 40]
-        return df
+
+        # Enforce minimum score
+        df = df[df["fit_score"] >= 40]
+        return df.reset_index(drop=True)
+
     except Exception as exc:
         st.warning(f"Could not load student jobs: {exc}")
         return pd.DataFrame()
@@ -276,32 +327,40 @@ def fetch_student_metrics(student_id: str, min_score: float = 0.4) -> dict:
 
 @st.cache_data(ttl=1800)
 def fetch_metrics() -> dict[str, int]:
+    """Global counts from scraped_jobs."""
     client = get_client()
     if client is None:
         return {}
     metrics: dict[str, int] = {}
-    for key, table, extra_filter in [
-        ("total_jobs",      "jobs", None),
-        ("total_evaluated", "jobs", ("not_.is_", "career_ops_grade", "null")),
-        ("top_matches",     "jobs", ("in_",       "career_ops_grade", ["A+", "A"])),
-    ]:
-        try:
-            q = client.table(table).select("id", count="exact")
-            if extra_filter:
-                method, col, val = extra_filter
-                if method == "not_.is_":
-                    q = q.not_.is_(col, val)
-                elif method == "in_":
-                    q = q.in_(col, val)
-                else:
-                    q = q.eq(col, val)
-            metrics[key] = q.execute().count or 0
-        except Exception:
-            metrics[key] = 0
+    try:
+        metrics["total_jobs"] = (
+            client.table("scraped_jobs").select("id", count="exact").execute().count or 0
+        )
+    except Exception:
+        metrics["total_jobs"] = 0
+    try:
+        # "High match" = scraper_score >= 0.6 (A or A+)
+        metrics["top_matches"] = (
+            client.table("scraped_jobs")
+            .select("id", count="exact")
+            .gte("scraper_score", 0.6)
+            .execute().count or 0
+        )
+    except Exception:
+        metrics["top_matches"] = 0
+    try:
+        metrics["entry_eligible"] = (
+            client.table("scraped_jobs")
+            .select("id", count="exact")
+            .eq("is_entry_eligible", True)
+            .execute().count or 0
+        )
+    except Exception:
+        metrics["entry_eligible"] = 0
     return metrics
 
 
-# ── Resolve student_id from name (now that fetchers are defined) ──────────────
+# ── Resolve student_id from name ──────────────────────────────────────────────
 if chosen != "All Students":
     students_data = fetch_students()
     match = next((s for s in students_data if s["name"] == chosen), None)
@@ -326,8 +385,8 @@ if selected_student_id:
 else:
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Jobs Scraped", f"{global_m.get('total_jobs', 0):,}")
-    c2.metric("Jobs Evaluated",     f"{global_m.get('total_evaluated', 0):,}")
-    c3.metric("A / A+ Matches",     f"{global_m.get('top_matches', 0):,}")
+    c2.metric("Entry Eligible",     f"{global_m.get('entry_eligible', 0):,}")
+    c3.metric("High Match (A/A+)",  f"{global_m.get('top_matches', 0):,}")
 
 st.markdown("---")
 
@@ -338,15 +397,16 @@ if selected_student_id:
     if df_all.empty:
         st.warning(f"No qualified matches for {selected_student_name} (fit score ≥ 40%).")
 else:
-    df_all = fetch_jobs_with_evals()
+    df_all = fetch_scraped_jobs()
 
 if df_all.empty:
-    st.info("No job data found. Run the sync pipeline to populate Supabase.")
+    st.info("No job data found. Run the scraper pipeline to populate Supabase.")
     st.stop()
 
-if "evaluated_at" in df_all.columns:
-    df_all["evaluated_at"] = pd.to_datetime(df_all["evaluated_at"], errors="coerce")
-    df_all["eval_date"] = df_all["evaluated_at"].dt.date
+# Parse fetched_at for time-series chart
+if "fetched_at" in df_all.columns:
+    df_all["fetched_at"] = pd.to_datetime(df_all["fetched_at"], errors="coerce")
+    df_all["fetch_date"] = df_all["fetched_at"].dt.date
 
 
 # ── Analytics ─────────────────────────────────────────────────────────────────
@@ -362,18 +422,18 @@ _CHART_LAYOUT = dict(
 ch1, ch2 = st.columns(2)
 
 with ch1:
-    if "eval_date" in df_all.columns:
+    if "fetch_date" in df_all.columns:
         time_df = (
-            df_all.dropna(subset=["eval_date"])
-            .groupby("eval_date").size()
+            df_all.dropna(subset=["fetch_date"])
+            .groupby("fetch_date").size()
             .reset_index(name="count")
-            .sort_values("eval_date")
+            .sort_values("fetch_date")
         )
         if not time_df.empty:
-            fig = px.bar(time_df, x="eval_date", y="count",
-                         labels={"eval_date": "", "count": "Jobs"},
+            fig = px.bar(time_df, x="fetch_date", y="count",
+                         labels={"fetch_date": "", "count": "Jobs"},
                          color_discrete_sequence=["#7c3aed"],
-                         title="Jobs Graded Over Time")
+                         title="Jobs Scraped Over Time")
             layout = dict(_CHART_LAYOUT)
             layout.update({
                 "xaxis": dict(gridcolor="rgba(255,255,255,0.1)", color="#e2e8f0"),
@@ -383,12 +443,12 @@ with ch1:
             fig.update_traces(marker_line_width=0)
             st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
         else:
-            st.info("No dated evaluations yet.")
+            st.info("No scrape timestamps yet.")
     else:
-        st.info("No evaluation timestamps found.")
+        st.info("No scrape timestamps found.")
 
 with ch2:
-    grade_col = "career_ops_grade"
+    grade_col = "grade"
     if grade_col in df_all.columns:
         grade_counts = (
             df_all[grade_col].dropna().value_counts()
@@ -407,7 +467,7 @@ with ch2:
                 textinfo="label+percent",
             ))
             layout2 = dict(_CHART_LAYOUT)
-            layout2.update({"title": "Grade Distribution", "showlegend": False})
+            layout2.update({"title": "Score Distribution", "showlegend": False})
             fig2.update_layout(**layout2)
             st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
         else:
@@ -425,7 +485,7 @@ with ch2:
         fig2.update_layout(**layout2)
         st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
     else:
-        st.info("No category data.")
+        st.info("No score data.")
 
 
 # ── Top Companies ─────────────────────────────────────────────────────────────
@@ -457,8 +517,9 @@ st.markdown("---")
 # ── Apply filters ─────────────────────────────────────────────────────────────
 df = df_all.copy()
 
-if not selected_student_id and grade_filter and "career_ops_grade" in df.columns:
-    df = df[df["career_ops_grade"].isin(grade_filter)]
+# Grade filter applies to the derived "grade" column (from scraper_score)
+if not selected_student_id and grade_filter and "grade" in df.columns:
+    df = df[df["grade"].isin(grade_filter)]
 
 if company_search:
     df = df[df["company"].str.contains(company_search, case=False, na=False)]
@@ -475,19 +536,6 @@ table_title = (
 )
 st.subheader(table_title)
 
-def _fit_score_to_grade(score_pct: float) -> tuple[str, str]:
-    """Convert fit_score percentage to letter grade and badge emoji."""
-    if score_pct >= 70:
-        return "A+", "🟢"
-    if score_pct >= 60:
-        return "A",  "🔵"
-    if score_pct >= 50:
-        return "B+", "🟣"
-    if score_pct >= 40:
-        return "B",  "🟠"
-    return "C", "⚪"
-
-
 if df.empty:
     st.info(
         f"No qualified jobs for {selected_student_name} (fit score ≥ 40%)."
@@ -502,18 +550,18 @@ else:
         location = str(row.get("location", ""))
 
         if selected_student_id and "fit_score" in row:
-            raw_score   = float(row["fit_score"])   # already ×100
+            raw_score = float(row["fit_score"])   # already ×100
             grade, badge = _fit_score_to_grade(raw_score)
             score_label = "Match Score"
         else:
-            raw = row.get("career_ops_score", 0)
+            raw = row.get("scraper_score", 0)
             try:
-                raw_score = float(raw) * 20 if pd.notna(raw) and raw != "" else 0
+                raw_score = float(raw) * 100 if pd.notna(raw) and raw != "" else 0
             except (ValueError, TypeError):
                 raw_score = 0
-            grade = str(row.get("career_ops_grade", "—"))
+            grade = str(row.get("grade", "—"))
             badge = {"A+": "🟢", "A": "🔵", "B+": "🟣", "B": "🟠"}.get(grade, "⚪")
-            score_label = "Career Score"
+            score_label = "Scraper Score"
 
         score_int = max(0, min(100, int(raw_score)))
 
@@ -530,19 +578,20 @@ else:
 
 
 # ── Daily Summary ─────────────────────────────────────────────────────────────
-if "eval_date" in df_all.columns:
+if "fetch_date" in df_all.columns:
     st.subheader("📅 Daily Summary")
-    daily_groups = df_all.dropna(subset=["eval_date"]).groupby("eval_date")
+    daily_groups = df_all.dropna(subset=["fetch_date"]).groupby("fetch_date")
     dates_sorted = sorted(daily_groups.groups.keys(), reverse=True)
     if dates_sorted:
         for date in dates_sorted:
             group = daily_groups.get_group(date)
             count = len(group)
-            with st.expander(f"📆 {date}  —  {count} job{'s' if count != 1 else ''} evaluated"):
-                sub = group[["company", "title", "career_ops_grade", "career_ops_score"]].copy()
+            with st.expander(f"📆 {date}  —  {count} job{'s' if count != 1 else ''} scraped"):
+                cols = [c for c in ["company", "title", "grade", "scraper_score"] if c in group.columns]
+                sub = group[cols].copy()
                 sub = sub.rename(columns={
-                    "career_ops_grade": "Grade",
-                    "career_ops_score": "Score",
+                    "grade": "Grade",
+                    "scraper_score": "Score",
                     "company": "Company",
                     "title": "Title",
                 })
@@ -552,29 +601,4 @@ if "eval_date" in df_all.columns:
                     )
                 st.dataframe(sub, use_container_width=True, hide_index=True)
     else:
-        st.info("No evaluated jobs with dates yet.")
-
-
-# ── Job Detail Report ─────────────────────────────────────────────────────────
-if "report_markdown" in df.columns and not df.empty:
-    st.subheader("🔎 Job Detail Report")
-    labels = df.apply(
-        lambda r: f"{r.get('company','?')} — {r.get('title','?')} ({r.get('career_ops_grade','?')})",
-        axis=1,
-    ).tolist()
-    selected_label = st.selectbox("View evaluation report:", ["— select a job —"] + labels)
-    if selected_label and selected_label != "— select a job —":
-        idx = labels.index(selected_label)
-        row = df.iloc[idx]
-        m1, m2, m3 = st.columns(3)
-        m1.metric("Company", row.get("company", "—"))
-        m2.metric("Grade",   row.get("career_ops_grade", "—"))
-        raw_score = row.get("career_ops_score")
-        score_str = f"{float(raw_score):.2f}" if pd.notna(raw_score) and raw_score != "" else "—"
-        m3.metric("Score", score_str)
-        report_md = row.get("report_markdown", "")
-        if report_md:
-            with st.expander("Full Evaluation Report", expanded=True):
-                st.markdown(report_md)
-        else:
-            st.info("No evaluation report available for this job.")
+        st.info("No scraped jobs with dates yet.")
