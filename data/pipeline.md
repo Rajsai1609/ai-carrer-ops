@@ -301,7 +301,6 @@ https://databricks.com/company/careers/open-positions/job?gh_jid=8309177002
 https://databricks.com/company/careers/open-positions/job?gh_jid=8466584002
 https://databricks.com/company/careers/open-positions/job?gh_jid=7839474002
 https://jobs.ashbyhq.com/openai/387e28ec-a4db-42da-9448-b6dbb7b13901
-https://www.indeed.com/viewjob?jk=e8f2c6e67bc23530
 https://jobs.ashbyhq.com/perplexity/b79784e8-1b6e-4c89-bcb9-c3fcb9e4b290
 https://www.indeed.com/viewjob?jk=d296f110981f4384
 https://databricks.com/company/careers/open-positions/job?gh_jid=8335860002
@@ -372,8 +371,8 @@ https://www.mongodb.com/careers/job/?gh_jid=7612606
 https://databricks.com/company/careers/open-positions/job?gh_jid=7651353002
 https://databricks.com/company/careers/open-positions/job?gh_jid=8320187002
 https://www.mongodb.com/careers/job/?gh_jid=7657684
-https://www.mongodb.com/careers/job/?gh_jid=7657688
 https://www.mongodb.com/careers/job/?gh_jid=7564234
+https://www.mongodb.com/careers/job/?gh_jid=7657688
 https://databricks.com/company/careers/open-positions/job?gh_jid=6759671002
 https://databricks.com/company/careers/open-positions/job?gh_jid=8500326002
 https://jobs.ashbyhq.com/openai/69417f32-b564-471b-acdf-f0330bd7074e
@@ -403,8 +402,8 @@ https://www.mongodb.com/careers/job/?gh_jid=7311708
 https://www.mongodb.com/careers/job/?gh_jid=7311666
 https://www.indeed.com/viewjob?jk=8870b38ddbda7572
 https://databricks.com/company/careers/open-positions/job?gh_jid=8218286002
-https://www.mongodb.com/careers/job/?gh_jid=7711189
 https://www.mongodb.com/careers/job/?gh_jid=7719083
+https://www.mongodb.com/careers/job/?gh_jid=7711189
 https://databricks.com/company/careers/open-positions/job?gh_jid=8495071002
 https://databricks.com/company/careers/open-positions/job?gh_jid=7897431002
 https://www.indeed.com/viewjob?jk=64aa9d81ea2efa02
@@ -500,6 +499,7 @@ https://jobs.elastic.co/jobs?gh_jid=7590700&gh_jid=7590700
 https://jobs.ashbyhq.com/perplexity/7755eb0a-0f51-4286-b75e-591e44c741bc
 https://careers.datadoghq.com/detail/7696093/?gh_jid=7696093
 https://jobs.ashbyhq.com/openai/57551641-208c-48d9-bfb8-9a298d7e7510
+https://www.indeed.com/viewjob?jk=a3c06faa3e5c8672
 https://databricks.com/company/careers/open-positions/job?gh_jid=8200284002
 https://databricks.com/company/careers/open-positions/job?gh_jid=8200462002
 https://databricks.com/company/careers/open-positions/job?gh_jid=8081658002
@@ -510,10 +510,11 @@ https://www.indeed.com/viewjob?jk=89383e2cff31767f
 https://databricks.com/company/careers/open-positions/job?gh_jid=8439078002
 https://www.mongodb.com/careers/job/?gh_jid=7593738
 https://databricks.com/company/careers/open-positions/job?gh_jid=5408888002
+https://www.indeed.com/viewjob?jk=8896ab5fdc9346ac
 https://databricks.com/company/careers/open-positions/job?gh_jid=8486738002
 https://www.mongodb.com/careers/job/?gh_jid=7773483
-https://www.mongodb.com/careers/job/?gh_jid=7683696
 https://www.mongodb.com/careers/job/?gh_jid=7523888
+https://www.mongodb.com/careers/job/?gh_jid=7683696
 https://jobs.ashbyhq.com/openai/e71cf565-4b21-4b0d-bf45-b22e58ca95eb
 https://jobs.ashbyhq.com/openai/bd3a367f-aa91-4b6f-b74e-451fb7fc3151
 https://www.indeed.com/viewjob?jk=c4f6dab1546a3dcb
@@ -580,13 +581,14 @@ https://databricks.com/company/careers/open-positions/job?gh_jid=5313313002
 https://databricks.com/company/careers/open-positions/job?gh_jid=4513122002
 https://databricks.com/company/careers/open-positions/job?gh_jid=6544325002
 https://jobs.dropbox.com/listing/7739553?gh_jid=7739553
+https://www.indeed.com/viewjob?jk=861b456826f5b0c4
 https://boards.greenhouse.io/figma/jobs/5737300004?gh_jid=5737300004
 https://www.indeed.com/viewjob?jk=b3a9fd1fbdf7e66d
 https://databricks.com/company/careers/open-positions/job?gh_jid=8472398002
 https://databricks.com/company/careers/open-positions/job?gh_jid=7823561002
 https://www.indeed.com/viewjob?jk=bd317cc0dbff4903
-https://www.mongodb.com/careers/job/?gh_jid=7583617
 https://www.mongodb.com/careers/job/?gh_jid=7773411
+https://www.mongodb.com/careers/job/?gh_jid=7583617
 https://jobs.ashbyhq.com/openai/a5591da5-23f3-4926-ac8d-8d1c927e3004
 https://www.indeed.com/viewjob?jk=5119bdf19ece56a1
 https://www.mongodb.com/careers/job/?gh_jid=7467701
