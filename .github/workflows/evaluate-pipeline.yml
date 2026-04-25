@@ -23,6 +23,10 @@ jobs:
       - name: Install Playwright
         run: npx playwright install chromium --with-deps
 
+      - name: Bootstrap profile config
+        run: |
+          [ -f config/profile.yml ] || cp config/profile.example.yml config/profile.yml
+
       - name: Run pipeline evaluation
         run: node run-pipeline-auto.mjs
         env:
